@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InternSync — Task Assigned</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#d9a441;
+  --accent2:#f0c060;
+  --bg:#1a1d0f;
+  --card-bg:rgba(255,255,255,0.055);
+  --card-border:rgba(255,255,255,0.13);
+  --text:#f0ede4;
+  --muted:rgba(240,237,228,0.45);
+  --teal:#2dd4bf;
+  --red:#ff6b6b;
+  --sidebar-w:230px;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; display:flex; flex-direction:column; }
+#meshCanvas{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+.glow{ position:fixed; width:380px; height:380px; background:radial-gradient(circle,rgba(217,164,65,.18),transparent 70%); border-radius:50%; pointer-events:none; filter:blur(60px); transform:translate(-50%,-50%); z-index:1; }
+
+/* LAYOUT */
+.layout{ display:flex; flex:1; position:relative; z-index:5; }
+
+/* SIDEBAR */
+.sidebar{ width:var(--sidebar-w); flex-shrink:0; background:rgba(10,13,6,.6); backdrop-filter:blur(20px); border-right:1px solid rgba(255,255,255,.07); padding:24px 0; display:flex; flex-direction:column; position:sticky; top:0; height:calc(100vh - 65px); overflow-y:auto; }
+.sidebar::-webkit-scrollbar{ width:3px; }
+.sidebar::-webkit-scrollbar-thumb{ background:rgba(217,164,65,.15); border-radius:4px; }
+.sidebar-section{ font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(240,237,228,.2); padding:0 20px; margin:18px 0 8px; }
+.sidebar-section:first-child{ margin-top:0; }
+.nav-item{ display:flex; align-items:center; gap:11px; padding:10px 20px; cursor:pointer; position:relative; color:var(--muted); font-size:13px; font-weight:500; transition:color .2s,background .2s; text-decoration:none; }
+.nav-item svg{ width:16px; height:16px; stroke:currentColor; flex-shrink:0; }
+.nav-item:hover{ color:var(--text); background:rgba(255,255,255,.04); }
+.nav-item.active{ color:var(--accent); background:rgba(217,164,65,.08); border-right:2px solid var(--accent); }
+.nav-item.active svg{ stroke:var(--accent); }
+
+/* MAIN */
+main{ flex:1; padding:32px 36px; overflow-y:auto; }
+.section-title{ font-family:'Syne',sans-serif; font-size:13px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:28px; display:flex; align-items:center; gap:10px; }
+.section-title::after{ content:''; flex:1; height:1px; background:rgba(217,164,65,.18); }
+
+/* ── FINAL PROJECT PINNED SECTION ── */
+.final-project-wrapper{
+  margin-bottom:36px;
+  position:relative;
+}
+.final-project-label{
+  font-family:'Syne',sans-serif;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:var(--red);
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.final-project-label::before{
+  content:'';
+  width:7px; height:7px;
+  border-radius:50%;
+  background:var(--red);
+  box-shadow:0 0 8px var(--red);
+  animation:pulseDot 1.6s ease-in-out infinite;
+}
+.final-project-label::after{
+  content:'';
+  flex:1; height:1px;
+  background:linear-gradient(90deg,rgba(255,107,107,.35),transparent);
+}
+@keyframes pulseDot{
+  0%,100%{ transform:scale(1); opacity:1; }
+  50%{ transform:scale(1.5); opacity:.6; }
+}
+
+/* FINAL PROJECT CARD — special styling */
+.task-card.final-card{
+  border-color:rgba(255,107,107,.28);
+  background:rgba(255,107,107,.04);
+  position:relative;
+  overflow:hidden;
+}
+.task-card.final-card::after{
+  background:linear-gradient(180deg,var(--red),rgba(255,107,107,.4));
+}
+.task-card.final-card::before{
+  background:linear-gradient(135deg,rgba(255,107,107,.06),transparent 60%);
+}
+
+/* animated corner accent */
+.final-card .corner-glow{
+  position:absolute;
+  top:-60px; right:-60px;
+  width:160px; height:160px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,107,107,.18),transparent 70%);
+  pointer-events:none;
+  animation:cornerPulse 3s ease-in-out infinite;
+}
+@keyframes cornerPulse{
+  0%,100%{ opacity:.6; transform:scale(1); }
+  50%{ opacity:1; transform:scale(1.15); }
+}
+
+/* PIN ICON badge */
+.badge-pin{
+  display:inline-flex; align-items:center; gap:5px;
+  background:rgba(255,107,107,.14); color:var(--red);
+  border:1px solid rgba(255,107,107,.35);
+  padding:4px 12px; border-radius:20px;
+  font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+}
+.badge-pin svg{ width:11px; height:11px; fill:var(--red); }
+
+/* deadline urgency bar */
+.urgency-bar{
+  width:100%; height:3px;
+  background:rgba(255,255,255,.06);
+  border-radius:4px;
+  overflow:hidden;
+  margin-top:18px;
+  margin-bottom:4px;
+}
+.urgency-fill{
+  height:100%;
+  border-radius:4px;
+  background:linear-gradient(90deg,var(--accent),var(--red));
+  animation:fillGrow 1.4s cubic-bezier(.22,1,.36,1) forwards;
+  width:0;
+}
+@keyframes fillGrow{ to{ width:88%; } }
+.urgency-label{
+  font-size:10px; color:var(--red);
+  font-weight:600; letter-spacing:.06em;
+  text-transform:uppercase;
+  text-align:right;
+}
+
+/* TASK CARD (shared) */
+.task-card{
+  background:var(--card-bg); border:1px solid var(--card-border);
+  border-radius:18px; padding:28px; backdrop-filter:blur(20px);
+  box-shadow:0 8px 32px rgba(0,0,0,.35);
+  position:relative; overflow:hidden; margin-bottom:20px;
+  transition:transform .25s ease,box-shadow .25s ease;
+  transform-style:preserve-3d;
+  opacity:0; transform:translateY(24px);
+}
+.task-card.visible{ animation:cardIn .55s cubic-bezier(.22,1,.36,1) forwards; }
+.task-card::before{ content:''; position:absolute; inset:0; border-radius:18px; background:linear-gradient(135deg,rgba(217,164,65,.04),transparent 60%); pointer-events:none; }
+.task-card::after{ content:''; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:18px 0 0 18px; background:linear-gradient(180deg,var(--accent),var(--accent2)); }
+@keyframes cardIn{ from{opacity:0;transform:translateY(28px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+.task-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; gap:12px; }
+.task-title{ font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--text); line-height:1.2; }
+.badge-row{ display:flex; gap:8px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
+.badge{ padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.badge-status{ background:rgba(217,164,65,.15); color:var(--accent); border:1px solid rgba(217,164,65,.3); }
+.badge-status.in-progress{ background:rgba(45,212,191,.12); color:var(--teal); border:1px solid rgba(45,212,191,.3); }
+.badge-high  { background:rgba(255,107,107,.12); color:var(--red);  border:1px solid rgba(255,107,107,.3); }
+.badge-medium{ background:rgba(251,191,36,.12);  color:#fbbf24;     border:1px solid rgba(251,191,36,.3); }
+.badge-low   { background:rgba(45,212,191,.12);  color:var(--teal); border:1px solid rgba(45,212,191,.3); }
+
+.task-desc{ font-size:13px; line-height:1.7; color:var(--muted); margin-bottom:18px; }
+.task-desc strong{ color:var(--text); font-weight:600; }
+
+.detail-block{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-left:3px solid var(--accent); border-radius:0 10px 10px 0; padding:14px 16px; margin-bottom:14px; }
+.detail-title{ font-family:'Syne',sans-serif; font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:10px; display:block; }
+
+/* red-tinted detail block for final card */
+.final-card .detail-block{ border-left-color:var(--red); }
+.final-card .detail-title{ color:var(--red); }
+.final-card .tool-tag{ background:rgba(255,107,107,.1); border-color:rgba(255,107,107,.25); color:var(--red); }
+
+.tool-tag{ display:inline-block; background:rgba(217,164,65,.1); border:1px solid rgba(217,164,65,.25); color:var(--accent); padding:3px 10px; border-radius:6px; font-size:11px; font-weight:600; margin-right:6px; margin-bottom:6px; font-family:'Syne',sans-serif; }
+
+.req-list{ margin:0; padding-left:0; list-style:none; }
+.req-list li{ font-size:13px; color:var(--muted); padding:5px 0; border-bottom:1px solid rgba(255,255,255,.04); display:flex; align-items:flex-start; gap:8px; line-height:1.5; }
+.req-list li:last-child{ border-bottom:none; padding-bottom:0; }
+.req-list li::before{ content:''; width:5px; height:5px; border-radius:50%; background:var(--accent); flex-shrink:0; margin-top:6px; }
+.final-card .req-list li::before{ background:var(--red); }
+
+.task-dates{ display:flex; gap:32px; margin-top:20px; padding-top:16px; border-top:1px solid rgba(255,255,255,.06); }
+.date-label{ font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:rgba(240,237,228,.3); font-weight:600; display:block; margin-bottom:4px; }
+.date-value{ font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:var(--text); }
+.date-value.urgent{ color:var(--red); }
+
+/* PARTICLES */
+.particle{ position:fixed; border-radius:50%; background:rgba(217,164,65,.14); pointer-events:none; z-index:2; animation:floatUp linear infinite; }
+@keyframes floatUp{ 0%{transform:translateY(0) scale(1);opacity:.4} 50%{transform:translateY(-70px) scale(1.1);opacity:.15} 100%{transform:translateY(-140px) scale(.8);opacity:0} }
+</style>
+</head>
+<body>
+
+<canvas id="meshCanvas"></canvas>
+<div class="glow" id="glow"></div>
+
+<!-- Shared Nav -->
+<script>
+  IS_NAV_CONFIG = {
+    name:       "Monisha K",
+    photo:      "",
+    profileURL: "intern-profile.html",
+    logoutURL:  "auth.html",
+    showBack:   false,
+    backURL:    "main.html"
+  };
+</script>
+<script src="intern-nav.js"></script>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">Menu</div>
+    <a class="nav-item" href="intern-dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" href="intern-content.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+      Content for You
+    </a>
+    <a class="nav-item active" href="intern-taskassigned.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Task Assigned
+    </a>
+    <a class="nav-item" href="intern-submission.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Submission
+    </a>
+    <a class="nav-item" href="intern-feedback.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Feedback
+    </a>
+    <div class="sidebar-section">Communication</div>
+    <a class="nav-item" href="intern-leaverequest.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Leave Request
+    </a>
+    <a class="nav-item" href="intern-discussionroom.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      Discussion Room
+    </a>
+    <a class="nav-item" href="intern-chat.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>
+      Chat with Mentor
+    </a>
+    <div class="sidebar-section">Profile</div>
+    <a class="nav-item" href="intern-profile.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      My Profile
+    </a>
+    <a class="nav-item" href="intern-certificate.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+      View Certificate
+    </a>
+  </aside>
+
+  <main>
+    <div class="section-title">Task Assigned</div>
+
+    <!-- ══════════════ FINAL PROJECT — PINNED ══════════════ -->
+    <div class="final-project-wrapper">
+      <div class="final-project-label">📌 Final Project Assignment</div>
+      <div class="task-card final-card" id="finalCard">
+        <div class="corner-glow"></div>
+        <div class="task-top">
+          <div class="task-title">Full-Stack Intern Capstone Project</div>
+          <div class="badge-row">
+            <span class="badge-pin">
+              <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+              Pinned
+            </span>
+            <span class="badge badge-status">Pending</span>
+            <span class="badge badge-high">High Priority</span>
+          </div>
+        </div>
+
+        <p class="task-desc">
+          <strong>Objective:</strong> Design and develop a complete, production-ready full-stack web application that showcases all the skills acquired during your internship — including frontend UI, backend API, database design, authentication, and deployment. This is your final deliverable and will be evaluated by the mentor panel.
+        </p>
+
+        <div class="detail-block">
+          <span class="detail-title">Required Stack</span>
+          <div>
+            <span class="tool-tag">React</span>
+            <span class="tool-tag">Node.js</span>
+            <span class="tool-tag">Express</span>
+            <span class="tool-tag">MySQL</span>
+            <span class="tool-tag">Firebase Auth</span>
+            <span class="tool-tag">Tailwind CSS</span>
+            <span class="tool-tag">REST API</span>
+          </div>
+        </div>
+
+        <div class="detail-block">
+          <span class="detail-title">Project Deliverables</span>
+          <ul class="req-list">
+            <li>Build a fully functional full-stack application with at least 5 core features</li>
+            <li>Implement secure user authentication (login, register, protected routes)</li>
+            <li>Design and document a normalized database schema with proper relationships</li>
+            <li>Deploy the application to a live URL (Vercel / Railway / Render)</li>
+            <li>Submit a GitHub repository with a detailed README and setup instructions</li>
+            <li>Prepare a 10-minute demo walkthrough for the mentor review session</li>
+          </ul>
+        </div>
+
+      <div class="urgency-bar"><div class="urgency-fill"></div></div>
+<div class="urgency-label" id="urgencyLabel"></div>
+
+        <div class="task-dates">
+          <div><span class="date-label">Date Assigned</span><span class="date-value">May 15, 2026</span></div>
+         <div><span class="date-label">Final Deadline</span><span class="date-value urgent">July 20, 2026</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- ══════════════ END FINAL PROJECT ══════════════ -->
+
+    <div class="section-title">Other Tasks</div>
+    <div id="taskContainer"></div>
+  </main>
+</div>
+
+<script>
+const tasks = [
+  {
+    title:"Database Optimization",
+    desc:"<strong>Objective:</strong> The current User Search query is taking over 2 seconds to execute. We need to optimize the 'users' table to handle 100k+ records.",
+    tools:["PostgreSQL","Explain Analyze","DBeaver"],
+    requirements:[
+      "Analyze current query execution plans",
+      "Implement B-Tree indexing on email and username columns",
+      "Provide a 'Before vs After' speed comparison report"
+    ],
+    assigned:"Feb 20, 2026", deadline:"Feb 28, 2026", status:"In Review"
+  },
+  {
+    title:"Frontend Bug Fix: Navbar",
+    desc:"<strong>Objective:</strong> The mobile navigation menu does not close when a link is clicked, covering the content on iOS Safari.",
+    tools:["React","Chrome DevTools","Tailwind CSS"],
+    requirements:[
+      "Identify the event bubbling issue in MobileMenu.jsx",
+      "Ensure the 'isOpen' state toggles to false on link click",
+      "Test across Safari, Chrome, and Firefox mobile"
+    ],
+    assigned:"Feb 25, 2026", deadline:"Mar 05, 2026", status:"In Progress"
+  },
+  {
+    title:"Build Login Page UI",
+    desc:"<strong>Objective:</strong> Design and implement a fully responsive login page using HTML, Tailwind CSS and Firebase authentication.",
+    tools:["HTML","Tailwind CSS","Firebase"],
+    requirements:[
+      "Implement email/password auth with Firebase",
+      "Add Google OAuth sign-in option",
+      "Ensure mobile-first responsive layout"
+    ],
+    assigned:"Mar 01, 2026", deadline:"Mar 10, 2026", status:"In Progress"
+  },
+  {
+    title:"Dashboard UI",
+    desc:"<strong>Objective:</strong> Build the main intern dashboard UI with stats, progress tracking and real-time data from the backend API.",
+    tools:["React","Chart.js","REST API"],
+    requirements:[
+      "Integrate attendance and task stats from API",
+      "Build animated progress indicators",
+      "Ensure cross-browser compatibility"
+    ],
+    assigned:"Mar 10, 2026", deadline:"Mar 22, 2026", status:"Pending"
+  },
+];
+
+function getPriority(deadline){
+  const diff=Math.ceil((new Date(deadline)-new Date())/86400000);
+  if(diff<=2) return {label:'High Priority',cls:'badge-high'};
+  if(diff<=7) return {label:'Medium Priority',cls:'badge-medium'};
+  return {label:'Low Priority',cls:'badge-low'};
+}
+function getStatusCls(s){
+  if(s==='In Progress') return 'badge-status in-progress';
+  if(s==='Pending') return 'badge-medium';
+  return 'badge-status';
+}
+
+const container=document.getElementById('taskContainer');
+tasks.forEach(task=>{
+  const pr=getPriority(task.deadline);
+  const div=document.createElement('div');
+  div.className='task-card';
+  div.innerHTML=`
+    <div class="task-top">
+      <div class="task-title">${task.title}</div>
+      <div class="badge-row">
+        <span class="badge ${getStatusCls(task.status)}">${task.status}</span>
+        <span class="badge ${pr.cls}">${pr.label}</span>
+      </div>
+    </div>
+    <p class="task-desc">${task.desc}</p>
+    <div class="detail-block">
+      <span class="detail-title">Required Stack</span>
+      <div>${task.tools.map(t=>`<span class="tool-tag">${t}</span>`).join('')}</div>
+    </div>
+    <div class="detail-block">
+      <span class="detail-title">Project Deliverables</span>
+      <ul class="req-list">${task.requirements.map(r=>`<li>${r}</li>`).join('')}</ul>
+    </div>
+    <div class="task-dates">
+      <div><span class="date-label">Date Assigned</span><span class="date-value">${task.assigned}</span></div>
+      <div><span class="date-label">Target Deadline</span><span class="date-value">${task.deadline}</span></div>
+    </div>
+  `;
+  container.appendChild(div);
+});
+
+/* STAGGER REVEAL — final card first, then rest */
+const finalCard = document.getElementById('finalCard');
+setTimeout(()=>finalCard.classList.add('visible'), 80);
+document.querySelectorAll('#taskContainer .task-card').forEach((c,i)=>setTimeout(()=>c.classList.add('visible'),200+i*130));
+
+/* 3D TILT */
+document.querySelectorAll('.task-card').forEach(card=>{
+  card.addEventListener('mousemove',e=>{
+    const r=card.getBoundingClientRect();
+    const dx=(e.clientX-r.left-r.width/2)/(r.width/2);
+    const dy=(e.clientY-r.top-r.height/2)/(r.height/2);
+    card.style.transform=`perspective(900px) rotateY(${dx*5}deg) rotateX(${-dy*5}deg) translateY(-4px) scale(1.01)`;
+    card.style.boxShadow=`${-dx*10}px ${-dy*10}px 36px rgba(217,164,65,.16),0 16px 48px rgba(0,0,0,.4)`;
+  });
+  card.addEventListener('mouseleave',()=>{
+    card.style.transition='transform .5s cubic-bezier(.34,1.56,.64,1),box-shadow .4s ease';
+    card.style.transform='perspective(900px) rotateY(0) rotateX(0) translateY(0) scale(1)';
+    card.style.boxShadow='0 8px 32px rgba(0,0,0,.35)';
+    setTimeout(()=>card.style.transition='',500);
+  });
+  card.addEventListener('mouseenter',()=>card.style.transition='transform .12s ease,box-shadow .12s ease');
+});
+
+/* MAGNETIC BUTTONS */
+document.querySelectorAll('button').forEach(b=>{
+  b.addEventListener('mousemove',e=>{
+    const r=b.getBoundingClientRect();
+    b.style.transform=`translate(${(e.clientX-r.left-r.width/2)*.2}px,${(e.clientY-r.top-r.height/2)*.2}px) scale(1.05)`;
+  });
+  b.addEventListener('mouseleave',()=>{
+    b.style.transition='transform .4s cubic-bezier(.34,1.56,.64,1)';
+    b.style.transform='translate(0,0) scale(1)';
+    setTimeout(()=>b.style.transition='',400);
+  });
+});
+
+/* MAGNETIC SIDEBAR */
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('mousemove',e=>{
+    const r=item.getBoundingClientRect();
+    if(!item.classList.contains('active'))
+      item.style.transform=`translateY(${(e.clientY-r.top-r.height/2)*.12}px)`;
+  });
+  item.addEventListener('mouseleave',()=>{
+    item.style.transition='transform .4s cubic-bezier(.34,1.56,.64,1)';
+    item.style.transform='translateY(0)';
+    setTimeout(()=>item.style.transition='',400);
+  });
+});
+
+/* MESH */
+const cvs=document.getElementById('meshCanvas'),ctx=cvs.getContext('2d');
+let W,H;
+function rsz(){ W=cvs.width=innerWidth; H=cvs.height=innerHeight; }
+rsz(); addEventListener('resize',rsz);
+const pts=[
+  {ax:.65,ay:.25,rx:.3,ry:.2,fx:.00028,fy:.00016,px:0,py:1,r:620,c:'rgba(180,120,20,'},
+  {ax:.2,ay:.65,rx:.22,ry:.28,fx:.00018,fy:.00026,px:2.4,py:0,r:540,c:'rgba(155,100,15,'},
+  {ax:.5,ay:.1,rx:.28,ry:.2,fx:.00022,fy:.00014,px:1,py:2,r:580,c:'rgba(50,65,20,'},
+  {ax:.88,ay:.78,rx:.2,ry:.22,fx:.00013,fy:.00031,px:.5,py:.8,r:500,c:'rgba(44,58,18,'},
+  {ax:.08,ay:.18,rx:.18,ry:.22,fx:.00025,fy:.0002,px:3,py:1.5,r:460,c:'rgba(20,24,12,'},
+  {ax:.55,ay:.88,rx:.24,ry:.18,fx:.00017,fy:.00023,px:1.8,py:2.7,r:490,c:'rgba(28,32,16,'},
+];
+function mesh(t){
+  ctx.fillStyle='#1a1d0f'; ctx.fillRect(0,0,W,H);
+  pts.forEach(p=>{
+    const x=W*(p.ax+p.rx*Math.sin(p.fx*t+p.px));
+    const y=H*(p.ay+p.ry*Math.cos(p.fy*t+p.py));
+    const g=ctx.createRadialGradient(x,y,0,x,y,p.r);
+    g.addColorStop(0,p.c+'0.36)'); g.addColorStop(.5,p.c+'0.11)'); g.addColorStop(1,p.c+'0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  });
+  const v=ctx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,H*.88);
+  v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.5)');
+  ctx.fillStyle=v; ctx.fillRect(0,0,W,H);
+}
+let t0=null;
+(function loop(ts){ if(!t0)t0=ts; mesh(ts-t0); requestAnimationFrame(loop); })(0);
+
+/* GLOW */
+const gl=document.getElementById('glow');
+addEventListener('mousemove',e=>{ gl.style.left=e.clientX+'px'; gl.style.top=e.clientY+'px'; });
+
+/* PARTICLES */
+for(let i=0;i<10;i++){
+  const p=document.createElement('div'); p.className='particle';
+  const sz=2+Math.random()*4;
+  Object.assign(p.style,{ width:sz+'px',height:sz+'px',left:Math.random()*100+'vw',top:(60+Math.random()*40)+'vh',animationDuration:(9+Math.random()*14)+'s',animationDelay:Math.random()*10+'s' });
+  document.body.appendChild(p);
+}
+const days = Math.ceil((new Date('2026-07-20') - new Date()) / 86400000);
+document.getElementById('urgencyLabel').textContent = `⚠ ${days} days left until final deadline`;
+</script>
+</body>
+</html>

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InternSync — Leave Request</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#d9a441; --accent2:#f0c060; --bg:#1a1d0f;
+  --card-bg:rgba(255,255,255,0.055); --card-border:rgba(255,255,255,0.13);
+  --text:#f0ede4; --muted:rgba(240,237,228,0.45);
+  --teal:#2dd4bf; --red:#ff6b6b; --green:#4ade80; --sidebar-w:230px;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; display:flex; flex-direction:column; }
+#meshCanvas{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+.glow{ position:fixed; width:380px; height:380px; background:radial-gradient(circle,rgba(217,164,65,.18),transparent 70%); border-radius:50%; pointer-events:none; filter:blur(60px); transform:translate(-50%,-50%); z-index:1; }
+.layout{ display:flex; flex:1; position:relative; z-index:5; }
+.sidebar{ width:var(--sidebar-w); flex-shrink:0; background:rgba(10,13,6,.6); backdrop-filter:blur(20px); border-right:1px solid rgba(255,255,255,.07); padding:24px 0; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:auto; }
+.sidebar::-webkit-scrollbar{ width:3px; }
+.sidebar::-webkit-scrollbar-thumb{ background:rgba(217,164,65,.15); border-radius:4px; }
+.sidebar-section{ font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(240,237,228,.2); padding:0 20px; margin:18px 0 8px; }
+.nav-item{ display:flex; align-items:center; gap:11px; padding:10px 20px; cursor:pointer; position:relative; color:var(--muted); font-size:13px; font-weight:500; transition:color .2s,background .2s; text-decoration:none; }
+.nav-item svg{ width:16px; height:16px; stroke:currentColor; flex-shrink:0; }
+.nav-item:hover{ color:var(--text); background:rgba(255,255,255,.04); }
+.nav-item.active{ color:var(--accent); background:rgba(217,164,65,.08); border-right:2px solid var(--accent); }
+.nav-item.active svg{ stroke:var(--accent); }
+main{ flex:1; padding:32px 36px; overflow-y:auto; }
+.page-header{ margin-bottom:28px; opacity:0; animation:fadeUp .6s .1s cubic-bezier(.22,1,.36,1) forwards; }
+.page-eyebrow{ font-family:'Syne',sans-serif; font-size:10px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); margin-bottom:6px; }
+.page-title{ font-family:'Syne',sans-serif; font-size:28px; font-weight:800; line-height:1.1; }
+.page-title span{ color:var(--accent); }
+.page-sub{ font-size:13px; color:var(--muted); margin-top:5px; }
+.summary-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px; opacity:0; animation:fadeUp .6s .2s cubic-bezier(.22,1,.36,1) forwards; }
+.sum-card{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:16px 18px; text-align:center; backdrop-filter:blur(16px); transition:transform .2s,box-shadow .2s,border-color .2s; }
+.sum-card:hover{ transform:translateY(-3px); box-shadow:0 8px 24px rgba(217,164,65,.1); border-color:rgba(217,164,65,.2); }
+.sum-val{ font-family:'Syne',sans-serif; font-size:26px; font-weight:800; line-height:1; }
+.sum-lbl{ font-size:10px; color:var(--muted); margin-top:5px; text-transform:uppercase; letter-spacing:.08em; }
+.leave-grid{ display:grid; grid-template-columns:1fr 1.5fr; gap:20px; opacity:0; animation:fadeUp .6s .3s cubic-bezier(.22,1,.36,1) forwards; }
+.card{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:20px; padding:28px; backdrop-filter:blur(20px); box-shadow:0 8px 32px rgba(0,0,0,.35); position:relative; overflow:hidden; transition:transform .25s ease,box-shadow .25s ease; transform-style:preserve-3d; }
+.card::before{ content:''; position:absolute; inset:0; border-radius:20px; background:linear-gradient(135deg,rgba(217,164,65,.04),transparent 60%); pointer-events:none; }
+.card-title{ font-family:'Syne',sans-serif; font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:22px; display:flex; align-items:center; gap:8px; }
+.card-title svg{ width:14px; height:14px; stroke:var(--accent); }
+.form-group{ margin-bottom:18px; }
+.form-label{ font-family:'Syne',sans-serif; font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:8px; }
+.date-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+input[type="date"], textarea{
+  width:100%; padding:11px 14px;
+  border:1px solid rgba(255,255,255,.08); border-radius:10px;
+  background:rgba(255,255,255,.07); color:var(--text); outline:none;
+  font-family:'DM Sans',sans-serif; font-size:13px;
+  transition:background .2s,border-color .2s,box-shadow .2s;
+  -webkit-appearance:none;
+}
+input[type="date"]:focus, textarea:focus{
+  background:rgba(255,255,255,.11); border-color:rgba(217,164,65,.45);
+  box-shadow:0 0 0 3px rgba(217,164,65,.08);
+}
+input[type="date"]{ color-scheme:dark; }
+textarea{ resize:vertical; min-height:100px; line-height:1.6; }
+::placeholder{ color:rgba(240,237,228,.22); }
+.type-pills{ display:flex; gap:8px; flex-wrap:wrap; }
+.type-pill{ padding:7px 16px; border-radius:24px; font-size:12px; font-weight:600; font-family:'Syne',sans-serif; cursor:pointer; letter-spacing:.04em; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.05); color:var(--muted); transition:all .2s; }
+.type-pill:hover{ border-color:rgba(217,164,65,.3); color:var(--text); }
+.type-pill.selected{ background:rgba(217,164,65,.15); border-color:var(--accent); color:var(--accent); box-shadow:0 0 12px rgba(217,164,65,.15); }
+.btn-submit{ width:100%; padding:13px; margin-top:20px; border-radius:30px; background:var(--accent); color:#1a1d0f; font-family:'Syne',sans-serif; font-weight:800; font-size:13px; letter-spacing:.5px; border:2px solid transparent; cursor:pointer; transition:all .25s; display:flex; align-items:center; justify-content:center; gap:8px; }
+.btn-submit:hover{ background:transparent; border-color:var(--accent); color:var(--accent); box-shadow:0 6px 20px rgba(217,164,65,.35); letter-spacing:1.2px; }
+.btn-submit:disabled{ opacity:.5; cursor:not-allowed; transform:none !important; }
+.btn-submit svg{ width:15px; height:15px; stroke:currentColor; }
+.table-wrap{ overflow-x:auto; }
+table{ width:100%; border-collapse:collapse; }
+thead tr{ border-bottom:1px solid rgba(255,255,255,.08); }
+th{ font-family:'Syne',sans-serif; font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); padding:10px 12px; text-align:left; white-space:nowrap; }
+td{ padding:13px 12px; font-size:13px; color:var(--text); vertical-align:middle; }
+tbody tr{ border-bottom:1px solid rgba(255,255,255,.04); transition:background .15s; }
+tbody tr:last-child{ border-bottom:none; }
+tbody tr:hover{ background:rgba(255,255,255,.03); }
+.sbadge{ display:inline-flex; align-items:center; gap:5px; padding:4px 11px; border-radius:20px; font-size:11px; font-weight:700; font-family:'Syne',sans-serif; letter-spacing:.06em; white-space:nowrap; }
+.sbadge::before{ content:''; width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+.sbadge-approved{ background:rgba(74,222,128,.1); color:var(--green); border:1px solid rgba(74,222,128,.28); }
+.sbadge-approved::before{ background:var(--green); }
+.sbadge-pending{ background:rgba(251,191,36,.12); color:#fbbf24; border:1px solid rgba(251,191,36,.3); }
+.sbadge-pending::before{ background:#fbbf24; }
+.sbadge-rejected{ background:rgba(255,107,107,.12); color:var(--red); border:1px solid rgba(255,107,107,.28); }
+.sbadge-rejected::before{ background:var(--red); }
+.duration-chip{ display:inline-block; background:rgba(45,212,191,.08); border:1px solid rgba(45,212,191,.2); color:var(--teal); border-radius:20px; padding:3px 10px; font-size:11px; font-family:'Syne',sans-serif; font-weight:700; white-space:nowrap; }
+.empty-row td{ text-align:center; color:var(--muted); font-size:13px; padding:40px 20px !important; }
+.auth-warning{ background:rgba(255,107,107,.08); border:1px solid rgba(255,107,107,.25); border-radius:14px; padding:16px 20px; margin-bottom:20px; display:flex; align-items:center; gap:12px; font-size:13px; color:var(--red); }
+.auth-warning svg{ width:18px; height:18px; stroke:currentColor; flex-shrink:0; }
+.toast{ position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(20px); background:rgba(14,18,8,.97); border:1px solid rgba(217,164,65,.4); color:#fff; padding:12px 24px; border-radius:30px; font-size:13px; opacity:0; pointer-events:none; transition:opacity .3s,transform .3s; z-index:9999; white-space:nowrap; display:flex; align-items:center; gap:10px; }
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.toast.error{ border-color:rgba(255,107,107,.5); }
+.toast-icon{ width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; flex-shrink:0; }
+.ti-green{ background:rgba(74,222,128,.2); color:var(--green); }
+.ti-red{ background:rgba(255,107,107,.2); color:var(--red); }
+.particle{ position:fixed; border-radius:50%; background:rgba(217,164,65,.14); pointer-events:none; z-index:2; animation:floatUp linear infinite; }
+@keyframes floatUp{ 0%{transform:translateY(0) scale(1);opacity:.4} 100%{transform:translateY(-140px) scale(.8);opacity:0} }
+@keyframes fadeUp{ from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+  <script src="intern-nav.js"></script>
+<canvas id="meshCanvas"></canvas>
+<div class="glow" id="glow"></div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Menu</div>
+    <a class="nav-item" href="intern-dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
+    <a class="nav-item" href="intern-content.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Content for You</a>
+    <a class="nav-item" href="intern-taskassigned.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Task Assigned</a>
+    <a class="nav-item" href="intern-submission.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Submission</a>
+    <a class="nav-item" href="intern-feedback.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Feedback</a>
+    <div class="sidebar-section">Communication</div>
+    <a class="nav-item active" href="intern-leave.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Leave Request</a>
+    <a class="nav-item" href="intern-discussion.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Discussion Room</a>
+    <a class="nav-item" href="intern-pvtchat.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>Chat with Mentor</a>
+    <div class="sidebar-section">Profile</div>
+    <a class="nav-item" href="intern-profile.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>My Profile</a>
+    <a class="nav-item" href="intern-certificate.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>View Certificate</a>
+  </aside>
+
+  <main>
+    <div class="page-header">
+      <div class="page-eyebrow">Manage Leave</div>
+      <h1 class="page-title">Leave <span>Request</span></h1>
+      <p class="page-sub">Apply for leave and track your request history below.</p>
+    </div>
+
+    <!-- Auth warning shown if not logged in as intern -->
+    <div class="auth-warning" id="authWarning" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      You are not logged in as an intern. Please log in with your intern account to apply for leave.
+    </div>
+
+    <div class="summary-row">
+      <div class="sum-card">
+        <div class="sum-val" id="sumTotal" style="color:var(--accent)">—</div>
+        <div class="sum-lbl">Total Leaves</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-val" id="sumApproved" style="color:var(--green)">—</div>
+        <div class="sum-lbl">Approved</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-val" id="sumPending" style="color:#fbbf24">—</div>
+        <div class="sum-lbl">Pending</div>
+      </div>
+    </div>
+
+    <div class="leave-grid">
+      <!-- FORM -->
+      <div class="card" id="c1">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Apply for Leave
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Leave Type</label>
+          <div class="type-pills" id="typePills">
+            <div class="type-pill selected" onclick="selectType(this)">Sick</div>
+            <div class="type-pill" onclick="selectType(this)">Personal</div>
+            <div class="type-pill" onclick="selectType(this)">Medical</div>
+            <div class="type-pill" onclick="selectType(this)">Family</div>
+            <div class="type-pill" onclick="selectType(this)">Other</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Leave Duration</label>
+          <div class="date-row">
+            <div>
+              <label class="form-label" style="font-size:9px;margin-bottom:5px;">From</label>
+              <input type="date" id="fromDate" required>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:9px;margin-bottom:5px;">To</label>
+              <input type="date" id="toDate" required>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Reason</label>
+          <textarea id="reason" placeholder="Briefly describe why you need leave…" required></textarea>
+        </div>
+
+        <button class="btn-submit" id="submitBtn" onclick="submitLeave()">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Send Request to Mentor
+        </button>
+      </div>
+
+      <!-- HISTORY TABLE -->
+      <div class="card" id="c2">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Request History
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>From</th>
+                <th>To</th>
+                <th>Days</th>
+                <th>Type</th>
+                <th>Reason</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="leaveHistory">
+              <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px;font-size:13px;">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast">
+  <div class="toast-icon" id="toastIcon"></div>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+const API = 'http://localhost:3000/api';
+
+// ── Auth helpers ──────────────────────────────────────────
+function getInternId() {
+  return localStorage.getItem('internId')
+      || localStorage.getItem('userId')
+      || localStorage.getItem('id')
+      || null;
+}
+
+function getInternRole() {
+  return localStorage.getItem('role') || null;
+}
+
+function isValidInternSession() {
+  const id   = getInternId();
+  const role = getInternRole();
+  // Must have an ID, must NOT be mentor, and ID must not be 'undefined'
+  return id && id !== 'undefined' && id !== 'null' && role !== 'mentor';
+}
+
+// ── Date helpers ──────────────────────────────────────────
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-US', { month:'short', day:'2-digit', year:'numeric' });
+}
+
+function daysBetween(from, to) {
+  if (!from || !to) return '1';
+  const d = Math.round((new Date(to) - new Date(from)) / (1000*60*60*24)) + 1;
+  return d < 1 ? '1' : String(d);
+}
+
+// ── Badge ─────────────────────────────────────────────────
+function badgeHTML(status) {
+  const map = { approved:'sbadge-approved', pending:'sbadge-pending', rejected:'sbadge-rejected' };
+  const cls = map[status] || 'sbadge-pending';
+  const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Pending';
+  return `<span class="sbadge ${cls}">${label}</span>`;
+}
+
+// ── Toast ─────────────────────────────────────────────────
+function showToast(msg, isError=false) {
+  const t    = document.getElementById('toast');
+  const icon = document.getElementById('toastIcon');
+  icon.className = 'toast-icon ' + (isError ? 'ti-red' : 'ti-green');
+  icon.textContent = isError ? '✕' : '✓';
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.toggle('error', isError);
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ── Animated counter ──────────────────────────────────────
+function animateCount(elId, target) {
+  const el = document.getElementById(elId);
+  let v = 0;
+  const iv = setInterval(() => {
+    v = Math.min(v + 1, target);
+    el.textContent = v;
+    if (v >= target) clearInterval(iv);
+  }, 40);
+}
+
+// ── Load summary ──────────────────────────────────────────
+async function loadSummary(internId) {
+  try {
+    const res  = await fetch(`${API}/leave/summary/${internId}`);
+    const data = await res.json();
+    animateCount('sumTotal',    parseInt(data.total)    || 0);
+    animateCount('sumApproved', parseInt(data.approved) || 0);
+    animateCount('sumPending',  parseInt(data.pending)  || 0);
+  } catch(e) {
+    ['sumTotal','sumApproved','sumPending'].forEach(id =>
+      document.getElementById(id).textContent = '0'
+    );
+  }
+}
+
+// ── Load history ──────────────────────────────────────────
+async function loadHistory(internId) {
+  const tbody = document.getElementById('leaveHistory');
+  try {
+    const res  = await fetch(`${API}/leave/intern/${internId}`);
+    const rows = await res.json();
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No leave requests yet. Apply above!</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+      const from = r.from_date || r.leave_date;
+      const to   = r.to_date   || r.leave_date;
+      const days = daysBetween(from, to);
+      return `
+        <tr>
+          <td>${fmtDate(from)}</td>
+          <td>${fmtDate(to)}</td>
+          <td><span class="duration-chip">${days}d</span></td>
+          <td>${r.leave_type || '—'}</td>
+          <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+              title="${r.reason || ''}">${r.reason || '—'}</td>
+          <td>${badgeHTML(r.status)}</td>
+        </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">Failed to load history. Is the server running?</td></tr>`;
+  }
+}
+
+// ── Leave type selection ──────────────────────────────────
+let selectedType = 'Sick';
+function selectType(el) {
+  document.querySelectorAll('.type-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedType = el.textContent.trim();
+}
+
+// ── Date min constraints ──────────────────────────────────
+const today = new Date().toISOString().split('T')[0];
+document.getElementById('fromDate').min = today;
+document.getElementById('toDate').min   = today;
+document.getElementById('fromDate').addEventListener('change', function() {
+  document.getElementById('toDate').min = this.value;
+  const toVal = document.getElementById('toDate').value;
+  if (toVal && toVal < this.value) {
+    document.getElementById('toDate').value = this.value;
+  }
+});
+
+// ── Submit leave ──────────────────────────────────────────
+async function submitLeave() {
+  // Role guard — prevent mentor session from submitting
+  if (!isValidInternSession()) {
+    showToast('Please log in as an intern to apply for leave.', true);
+    return;
+  }
+
+  const internId = getInternId();
+  const fromDate = document.getElementById('fromDate').value;
+  const toDate   = document.getElementById('toDate').value;
+  const reason   = document.getElementById('reason').value.trim();
+
+  if (!fromDate || !toDate || !reason) {
+    showToast('Please fill in all fields.', true);
+    return;
+  }
+  if (toDate < fromDate) {
+    showToast('End date cannot be before start date.', true);
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = `<div style="width:16px;height:16px;border:2px solid rgba(26,29,15,.4);border-top-color:#1a1d0f;border-radius:50%;animation:spin .7s linear infinite"></div> Sending…`;
+
+  try {
+    const res = await fetch(`${API}/leave/apply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intern_id:  internId,
+        leave_type: selectedType,
+        reason,
+        from_date:  fromDate,
+        to_date:    toDate
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error || 'Failed to submit.', true);
+      return;
+    }
+
+    // Optimistically add row to table
+    const tbody = document.getElementById('leaveHistory');
+    const days  = daysBetween(fromDate, toDate);
+    const tr    = document.createElement('tr');
+    tr.style.cssText = 'opacity:0;transform:translateY(-8px);transition:opacity .4s,transform .4s';
+    tr.innerHTML = `
+      <td>${fmtDate(fromDate)}</td>
+      <td>${fmtDate(toDate)}</td>
+      <td><span class="duration-chip">${days}d</span></td>
+      <td>${selectedType}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${reason}</td>
+      <td>${badgeHTML('pending')}</td>`;
+
+    const emptyRow = tbody.querySelector('.empty-row');
+    if (emptyRow) tbody.innerHTML = '';
+    tbody.insertBefore(tr, tbody.firstChild);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      tr.style.opacity = '1';
+      tr.style.transform = 'translateY(0)';
+    }));
+
+    // Reset form
+    document.getElementById('fromDate').value = '';
+    document.getElementById('toDate').value   = '';
+    document.getElementById('reason').value   = '';
+    document.querySelectorAll('.type-pill').forEach(p => p.classList.remove('selected'));
+    document.querySelector('.type-pill').classList.add('selected');
+    selectedType = 'Sick';
+
+    loadSummary(internId);
+    showToast('Leave request sent to mentor successfully!');
+
+  } catch(e) {
+    showToast('Network error. Is the server running?', true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" width="15" height="15"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Request to Mentor`;
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────
+(function init() {
+  const internId = getInternId();
+  const role     = getInternRole();
+
+  if (!isValidInternSession()) {
+    // Show warning, disable form
+    document.getElementById('authWarning').style.display = 'flex';
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('submitBtn').textContent = 'Log in as Intern to Apply';
+    ['sumTotal','sumApproved','sumPending'].forEach(id =>
+      document.getElementById(id).textContent = '0'
+    );
+    document.getElementById('leaveHistory').innerHTML =
+      `<tr class="empty-row"><td colspan="6">Please log in as an intern to view leave history.</td></tr>`;
+    return;
+  }
+
+  loadSummary(internId);
+  loadHistory(internId);
+})();
+
+// ── Mesh background ───────────────────────────────────────
+const cvs = document.getElementById('meshCanvas'), ctx = cvs.getContext('2d');
+let W, H;
+function rsz() { W = cvs.width = innerWidth; H = cvs.height = innerHeight; }
+rsz(); addEventListener('resize', rsz);
+const pts = [
+  {ax:.65,ay:.25,rx:.3,ry:.2,fx:.00028,fy:.00016,px:0,py:1,r:620,c:'rgba(180,120,20,'},
+  {ax:.2,ay:.65,rx:.22,ry:.28,fx:.00018,fy:.00026,px:2.4,py:0,r:540,c:'rgba(155,100,15,'},
+  {ax:.5,ay:.1,rx:.28,ry:.2,fx:.00022,fy:.00014,px:1,py:2,r:580,c:'rgba(50,65,20,'},
+  {ax:.88,ay:.78,rx:.2,ry:.22,fx:.00013,fy:.00031,px:.5,py:.8,r:500,c:'rgba(44,58,18,'},
+  {ax:.08,ay:.18,rx:.18,ry:.22,fx:.00025,fy:.0002,px:3,py:1.5,r:460,c:'rgba(20,24,12,'},
+  {ax:.55,ay:.88,rx:.24,ry:.18,fx:.00017,fy:.00023,px:1.8,py:2.7,r:490,c:'rgba(28,32,16,'}
+];
+function mesh(t) {
+  ctx.fillStyle = '#1a1d0f'; ctx.fillRect(0,0,W,H);
+  pts.forEach(p => {
+    const x = W*(p.ax + p.rx*Math.sin(p.fx*t+p.px));
+    const y = H*(p.ay + p.ry*Math.cos(p.fy*t+p.py));
+    const g = ctx.createRadialGradient(x,y,0,x,y,p.r);
+    g.addColorStop(0,p.c+'0.36)'); g.addColorStop(.5,p.c+'0.11)'); g.addColorStop(1,p.c+'0)');
+    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  });
+  const v = ctx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,H*.88);
+  v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.5)');
+  ctx.fillStyle = v; ctx.fillRect(0,0,W,H);
+}
+let t0 = null;
+(function loop(ts) { if(!t0) t0=ts; mesh(ts-t0); requestAnimationFrame(loop); })(0);
+
+const gl = document.getElementById('glow');
+addEventListener('mousemove', e => { gl.style.left = e.clientX+'px'; gl.style.top = e.clientY+'px'; });
+
+// Tilt effect on cards
+document.querySelectorAll('.card').forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const r = card.getBoundingClientRect();
+    const dx = (e.clientX-r.left-r.width/2)/(r.width/2);
+    const dy = (e.clientY-r.top-r.height/2)/(r.height/2);
+    card.style.transform = `perspective(900px) rotateY(${dx*5}deg) rotateX(${-dy*5}deg) translateY(-5px) scale(1.01)`;
+    card.style.boxShadow = `${-dx*10}px ${-dy*10}px 36px rgba(217,164,65,.16),0 16px 48px rgba(0,0,0,.4)`;
+  });
+  card.addEventListener('mouseleave', () => {
+    card.style.transition = 'transform .5s cubic-bezier(.34,1.56,.64,1),box-shadow .4s';
+    card.style.transform  = 'perspective(900px) rotateY(0) rotateX(0) translateY(0) scale(1)';
+    card.style.boxShadow  = '0 8px 32px rgba(0,0,0,.35)';
+    setTimeout(() => card.style.transition = '', 500);
+  });
+  card.addEventListener('mouseenter', () =>
+    card.style.transition = 'transform .12s ease,box-shadow .12s ease'
+  );
+});
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('mousemove', e => {
+    const r = item.getBoundingClientRect();
+    if (!item.classList.contains('active'))
+      item.style.transform = `translateY(${(e.clientY-r.top-r.height/2)*.12}px)`;
+  });
+  item.addEventListener('mouseleave', () => {
+    item.style.transition = 'transform .4s cubic-bezier(.34,1.56,.64,1)';
+    item.style.transform  = 'translateY(0)';
+    setTimeout(() => item.style.transition = '', 400);
+  });
+});
+
+// Floating particles
+for (let i = 0; i < 10; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  const sz = 2 + Math.random()*4;
+  Object.assign(p.style, {
+    width: sz+'px', height: sz+'px',
+    left: Math.random()*100+'vw',
+    top: (60+Math.random()*40)+'vh',
+    animationDuration: (9+Math.random()*14)+'s',
+    animationDelay: Math.random()*10+'s'
+  });
+  document.body.appendChild(p);
+}
+
+// Spinner keyframe
+const style = document.createElement('style');
+style.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+document.head.appendChild(style);
+</script>
+</body>
+</html>

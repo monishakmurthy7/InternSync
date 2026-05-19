@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InternSync — My Interns</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#d9a441; --accent2:#f0c060;
+  --bg:#0f1209; --card-bg:rgba(255,255,255,0.055);
+  --card-border:rgba(255,255,255,0.13);
+  --text:#f0ede4; --muted:rgba(240,237,228,0.45);
+  --teal:#2dd4bf; --red:#ff6b6b; --green:#4ade80;
+  --sidebar-w:240px;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; display:flex; flex-direction:column; }
+#meshCanvas{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+.glow{ position:fixed; width:500px; height:500px; background:radial-gradient(circle,rgba(217,164,65,.13),transparent 70%); border-radius:50%; pointer-events:none; filter:blur(80px); transform:translate(-50%,-50%); z-index:1; }
+.layout{ display:flex; flex:1; position:relative; z-index:5; }
+.sidebar{ width:var(--sidebar-w); flex-shrink:0; background:rgba(8,10,4,.7); backdrop-filter:blur(20px); border-right:1px solid rgba(255,255,255,.07); padding:24px 0; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:auto; }
+.sidebar::-webkit-scrollbar{ width:3px; }
+.sidebar::-webkit-scrollbar-thumb{ background:rgba(217,164,65,.15); border-radius:4px; }
+.sidebar-section{ font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(240,237,228,.2); padding:0 20px; margin:18px 0 8px; }
+.nav-item{ display:flex; align-items:center; gap:11px; padding:10px 20px; cursor:pointer; color:var(--muted); font-size:13px; font-weight:500; transition:color .2s,background .2s; text-decoration:none; position:relative; }
+.nav-item svg{ width:16px; height:16px; stroke:currentColor; flex-shrink:0; }
+.nav-item:hover{ color:var(--text); background:rgba(255,255,255,.04); }
+.nav-item.active{ color:var(--accent); background:rgba(217,164,65,.08); border-right:2px solid var(--accent); }
+.nav-item.active svg{ stroke:var(--accent); }
+.nav-badge{ margin-left:auto; background:var(--red); color:#fff; font-size:9px; font-family:'Syne',sans-serif; font-weight:700; border-radius:10px; padding:2px 6px; }
+main{ flex:1; padding:28px 32px; overflow-y:auto; }
+.section-title{ font-family:'Syne',sans-serif; font-size:13px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+.section-title::after{ content:''; flex:1; height:1px; background:rgba(217,164,65,.18); }
+.page-heading{ font-family:'Syne',sans-serif; font-size:28px; font-weight:800; margin-bottom:4px; }
+.page-heading span{ color:var(--accent); }
+.page-sub{ font-size:13px; color:var(--muted); margin-bottom:28px; }
+.toolbar{ display:flex; align-items:center; gap:12px; margin-bottom:24px; flex-wrap:wrap; }
+.search-wrap{ position:relative; flex:1; min-width:200px; }
+.search-wrap svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:14px; height:14px; stroke:var(--muted); pointer-events:none; }
+.search-input{ width:100%; padding:10px 14px 10px 36px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.09); border-radius:12px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; outline:none; transition:border-color .2s; }
+.search-input:focus{ border-color:rgba(217,164,65,.4); background:rgba(255,255,255,.09); }
+.search-input::placeholder{ color:rgba(240,237,228,.25); }
+.filter-pills{ display:flex; gap:8px; flex-wrap:wrap; }
+.filter-pill{ padding:7px 16px; border-radius:20px; font-size:11px; font-family:'Syne',sans-serif; font-weight:700; cursor:pointer; letter-spacing:.06em; border:1px solid rgba(255,255,255,.1); color:var(--muted); background:transparent; transition:all .2s; }
+.filter-pill:hover{ border-color:rgba(217,164,65,.3); color:var(--accent); }
+.filter-pill.active{ background:rgba(217,164,65,.12); border-color:rgba(217,164,65,.35); color:var(--accent); }
+.view-toggle{ display:flex; gap:4px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:3px; }
+.view-btn{ width:32px; height:28px; border-radius:7px; border:none; background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .2s; }
+.view-btn svg{ width:14px; height:14px; stroke:var(--muted); }
+.view-btn.active{ background:rgba(217,164,65,.15); }
+.view-btn.active svg{ stroke:var(--accent); }
+.stats-mini{ display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; }
+.stat-mini{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:14px 18px; display:flex; align-items:center; gap:12px; flex:1; min-width:120px; }
+.stat-mini-icon{ width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.stat-mini-icon svg{ width:15px; height:15px; }
+.stat-mini-val{ font-family:'Syne',sans-serif; font-size:20px; font-weight:800; line-height:1; }
+.stat-mini-lbl{ font-size:10px; color:var(--muted); margin-top:2px; }
+.interns-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.interns-grid.list-view{ grid-template-columns:1fr; }
+.intern-card{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:18px; padding:22px; backdrop-filter:blur(20px); box-shadow:0 8px 32px rgba(0,0,0,.3); position:relative; overflow:hidden; transition:transform .25s ease,box-shadow .25s ease,border-color .25s; transform-style:preserve-3d; opacity:0; transform:translateY(24px); cursor:default; }
+.intern-card.visible{ animation:cardIn .5s cubic-bezier(.22,1,.36,1) forwards; }
+.intern-card:hover{ border-color:rgba(217,164,65,.25); box-shadow:0 16px 48px rgba(217,164,65,.12); }
+.intern-card::before{ content:''; position:absolute; inset:0; border-radius:18px; background:linear-gradient(135deg,rgba(217,164,65,.04),transparent 60%); pointer-events:none; }
+@keyframes cardIn{ from{opacity:0;transform:translateY(24px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.ic-header{ display:flex; align-items:flex-start; gap:14px; margin-bottom:16px; }
+.ic-avatar{ width:50px; height:50px; border-radius:50%; flex-shrink:0; overflow:hidden; border:2px solid rgba(255,255,255,.18); background:#1e2210; display:flex; align-items:center; justify-content:center; }
+.ic-avatar img{ width:100%; height:100%; object-fit:cover; object-position:center 15%; display:block; }
+.ic-info{ flex:1; min-width:0; }
+.ic-name{ font-family:'Syne',sans-serif; font-size:15px; font-weight:800; color:var(--text); margin-bottom:3px; }
+.ic-role{ font-size:11px; color:var(--muted); margin-bottom:6px; }
+.ic-status{ display:inline-flex; align-items:center; gap:4px; border-radius:20px; padding:2px 9px; font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:.06em; }
+.ic-status-dot{ width:5px; height:5px; border-radius:50%; }
+.ic-progress-wrap{ margin-bottom:16px; }
+.ic-progress-labels{ display:flex; justify-content:space-between; margin-bottom:6px; }
+.ic-progress-lbl{ font-size:10px; color:var(--muted); font-family:'Syne',sans-serif; }
+.ic-progress-pct{ font-size:11px; font-weight:700; font-family:'Syne',sans-serif; }
+.ic-bar{ height:6px; background:rgba(255,255,255,.07); border-radius:6px; overflow:hidden; }
+.ic-bar-fill{ height:100%; border-radius:6px; transition:width 1.2s cubic-bezier(.4,0,.2,1); width:0%; }
+.ic-skills{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:16px; }
+.ic-skill{ font-size:10px; font-family:'Syne',sans-serif; font-weight:600; padding:3px 9px; border-radius:20px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); color:var(--muted); }
+.ic-footer{ display:flex; align-items:center; justify-content:space-between; padding-top:14px; border-top:1px solid rgba(255,255,255,.05); }
+.ic-tasks{ font-size:11px; color:var(--muted); }
+.ic-tasks span{ font-family:'Syne',sans-serif; font-weight:700; color:var(--text); }
+.btn-view-profile{ display:flex; align-items:center; gap:6px; padding:7px 16px; border-radius:20px; background:rgba(217,164,65,.1); border:1px solid rgba(217,164,65,.25); color:var(--accent); font-family:'Syne',sans-serif; font-size:11px; font-weight:700; cursor:pointer; letter-spacing:.04em; transition:all .2s; }
+.btn-view-profile:hover{ background:rgba(217,164,65,.2); box-shadow:0 0 14px rgba(217,164,65,.2); transform:translateY(-1px); }
+.btn-view-profile svg{ width:12px; height:12px; stroke:var(--accent); }
+.interns-grid.list-view .intern-card{ padding:16px 20px; }
+.interns-grid.list-view .ic-skills{ display:none; }
+.interns-grid.list-view .ic-header{ margin-bottom:10px; }
+.interns-grid.list-view .ic-progress-wrap{ margin-bottom:10px; }
+.empty-state{ grid-column:1/-1; text-align:center; padding:60px 20px; }
+.empty-state svg{ width:48px; height:48px; stroke:rgba(217,164,65,.3); margin-bottom:16px; }
+.empty-state p{ font-size:14px; color:var(--muted); }
+
+/* ── Profile Modal ── */
+.profile-modal-overlay{ position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,.75); backdrop-filter:blur(14px); display:none; justify-content:center; align-items:center; padding:20px; }
+.profile-modal-overlay.open{ display:flex; }
+.profile-modal-box{ background:#141810; border:1px solid rgba(217,164,65,.25); border-radius:20px; padding:28px; width:520px; max-width:100%; max-height:88vh; overflow-y:auto; box-shadow:0 32px 80px rgba(0,0,0,.85); animation:modalIn .3s cubic-bezier(.22,1,.36,1); }
+.profile-modal-box::-webkit-scrollbar{ width:3px; }
+.profile-modal-box::-webkit-scrollbar-thumb{ background:rgba(217,164,65,.2); border-radius:4px; }
+@keyframes modalIn{ from{opacity:0;transform:translateY(16px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.p-photo{ width:60px; height:60px; border-radius:50%; overflow:hidden; flex-shrink:0; border:2px solid rgba(217,164,65,.4); background:#1e2210; display:flex; align-items:center; justify-content:center; }
+.p-photo img{ width:100%; height:100%; object-fit:cover; object-position:center 15%; display:block; }
+.modal-info-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+.modal-info-cell{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); border-radius:10px; padding:12px; }
+.mic-label{ font-size:9px; font-family:'Syne',sans-serif; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:5px; }
+.mic-value{ font-size:13px; font-weight:600; color:var(--text); }
+.mic-value.small{ font-size:11px; }
+.resume-box{ background:linear-gradient(135deg,rgba(217,164,65,.1),rgba(217,164,65,.03)); border:1px solid rgba(217,164,65,.2); border-radius:10px; padding:16px; margin-bottom:16px; }
+.resume-box-header{ font-size:9px; font-family:'Syne',sans-serif; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin-bottom:12px; }
+.resume-inner{ display:flex; align-items:center; gap:12px; }
+.resume-icon{ width:36px; height:36px; border-radius:8px; background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.2); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.resume-info{ flex:1; }
+.resume-filename{ font-size:13px; font-weight:600; color:var(--text); margin-bottom:2px; }
+.resume-meta{ font-size:11px; color:var(--muted); }
+.btn-view-pdf{ padding:6px 16px; border-radius:20px; background:rgba(217,164,65,.1); border:1px solid rgba(217,164,65,.3); color:var(--accent); font-family:'Syne',sans-serif; font-size:10px; font-weight:700; cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:5px; white-space:nowrap; text-decoration:none; }
+.btn-view-pdf:hover{ background:rgba(217,164,65,.22); box-shadow:0 0 14px rgba(217,164,65,.2); }
+.btn-view-pdf svg{ width:11px; height:11px; stroke:var(--accent); }
+.toast{ position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); background:rgba(18,22,10,.97); border:1px solid rgba(217,164,65,.35); color:#fff; padding:11px 22px; border-radius:30px; font-size:13px; opacity:0; pointer-events:none; transition:opacity .3s,transform .3s; z-index:9999; white-space:nowrap; }
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.particle{ position:fixed; border-radius:50%; background:rgba(217,164,65,.12); pointer-events:none; z-index:2; animation:floatUp linear infinite; }
+@keyframes floatUp{ 0%{transform:translateY(0) scale(1);opacity:.4} 50%{transform:translateY(-70px) scale(1.1);opacity:.15} 100%{transform:translateY(-140px) scale(.8);opacity:0} }
+</style>
+</head>
+<body>
+  <script src="mentor-nav.js"></script>
+<canvas id="meshCanvas"></canvas>
+<div class="glow" id="glow"></div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Overview</div>
+    <a class="nav-item" href="mentor-dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
+    <a class="nav-item" href="mentor-profile.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>My Profile</a>
+    <a class="nav-item active" href="mentor-interns.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>My Interns</a>
+    <a class="nav-item" href="mentor-attendance.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 16 11 18 15 14"/></svg>Attendance</a>
+    <div class="sidebar-section">Tasks</div>
+    <a class="nav-item" href="mentor-assign.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Assign Tasks<span class="nav-badge">3</span></a>
+    <a class="nav-item" href="mentor-submissions.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Submissions<span class="nav-badge">5</span></a>
+    <a class="nav-item" href="mentor-feedback.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Give Feedback</a>
+    <div class="sidebar-section">Manage</div>
+    <a class="nav-item" href="mentor-leave.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>Leave Requests<span class="nav-badge">2</span></a>
+    <a class="nav-item" href="mentor-content.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>Manage Content</a>
+    <a class="nav-item" href="mentor-certificate.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>Certificates</a>
+    <div class="sidebar-section">Communication</div>
+    <a class="nav-item" href="mentor-pvtchat.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>Chat with Interns</a>
+  </aside>
+
+  <main>
+    <div class="page-heading">My <span>Interns</span></div>
+    <div class="page-sub">10 interns assigned · IBM SkillsBuild × InternSync · Jan 15 – Apr 15, 2026</div>
+
+    <div class="stats-mini">
+      <div class="stat-mini">
+        <div class="stat-mini-icon" style="background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.2)">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke="var(--accent)"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        </div>
+        <div><div class="stat-mini-val" style="color:var(--accent)">10</div><div class="stat-mini-lbl">Total Interns</div></div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-icon" style="background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.2)">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke="var(--teal)"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div><div class="stat-mini-val" style="color:var(--teal)" id="activeCount">0</div><div class="stat-mini-lbl">Active</div></div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-icon" style="background:rgba(217,164,65,.12);border:1px solid rgba(217,164,65,.2)">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke="var(--accent)"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div><div class="stat-mini-val" style="color:var(--accent)" id="behindCount">0</div><div class="stat-mini-lbl">Behind</div></div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-icon" style="background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.2)">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke="var(--red)"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div><div class="stat-mini-val" style="color:var(--red)" id="riskCount">0</div><div class="stat-mini-lbl">At Risk</div></div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-input" type="text" placeholder="Search interns…" id="searchInput" oninput="renderInterns()">
+      </div>
+      <div class="filter-pills">
+        <button class="filter-pill active" onclick="setFilter('all',this)">All</button>
+        <button class="filter-pill" onclick="setFilter('active',this)">Active</button>
+        <button class="filter-pill" onclick="setFilter('behind',this)">Behind</button>
+        <button class="filter-pill" onclick="setFilter('risk',this)">At Risk</button>
+        <button class="filter-pill" onclick="setFilter('fullstack',this)">Full Stack</button>
+        <button class="filter-pill" onclick="setFilter('frontend',this)">Frontend</button>
+        <button class="filter-pill" onclick="setFilter('backend',this)">Backend</button>
+      </div>
+      <div class="view-toggle">
+        <button class="view-btn active" id="gridBtn" onclick="setView('grid')"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+        <button class="view-btn" id="listBtn" onclick="setView('list')"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+      </div>
+    </div>
+
+    <div class="section-title" id="sectionLabel">All Interns</div>
+    <div class="interns-grid" id="internsGrid"></div>
+  </main>
+</div>
+
+<!-- Profile Modal -->
+<div class="profile-modal-overlay" id="profileModal">
+  <div class="profile-modal-box">
+    <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;">
+      <div class="p-photo" id="pPhoto"></div>
+      <div style="flex:1">
+        <div id="pName" style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);margin-bottom:3px;"></div>
+        <div id="pRole" style="font-size:12px;color:var(--muted);margin-bottom:8px;"></div>
+        <div id="pStatusBadge"></div>
+      </div>
+      <button onclick="closeProfile()" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:var(--muted);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;" onmouseover="this.style.background='rgba(255,107,107,.15)';this.style.color='#ff6b6b'" onmouseout="this.style.background='rgba(255,255,255,.07)';this.style.color='var(--muted)'">✕</button>
+    </div>
+
+    <div class="modal-info-grid">
+      <div class="modal-info-cell"><div class="mic-label">Duration</div><div class="mic-value" id="pDuration"></div></div>
+      <div class="modal-info-cell"><div class="mic-label">Mentor</div><div class="mic-value" id="pMentor"></div></div>
+      <div class="modal-info-cell"><div class="mic-label">Location</div><div class="mic-value small" id="pLocation"></div></div>
+      <div class="modal-info-cell"><div class="mic-label">Program</div><div class="mic-value" id="pProgram"></div></div>
+      <div class="modal-info-cell"><div class="mic-label">College</div><div class="mic-value small" id="pCollege"></div></div>
+      <div class="modal-info-cell"><div class="mic-label">CGPA</div><div class="mic-value" id="pCgpa"></div></div>
+    </div>
+
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);">Internship Progress</span>
+        <span id="pPct" style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--accent);"></span>
+      </div>
+      <div style="height:8px;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden;">
+        <div id="pBar" style="height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .9s cubic-bezier(.4,0,.2,1);width:0%;"></div>
+      </div>
+    </div>
+
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">About</div>
+      <div id="pSummary" style="font-size:12px;color:var(--muted);line-height:1.6;"></div>
+    </div>
+
+    <!-- Resume -->
+    <div class="resume-box">
+      <div class="resume-box-header">Resume / CV</div>
+      <div class="resume-inner">
+        <div class="resume-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div class="resume-info">
+          <div class="resume-filename" id="pResumeName"></div>
+          <div class="resume-meta">HTML · Uploaded on joining</div>
+        </div>
+        <a id="pResumeBtn" href="#" target="_blank" class="btn-view-pdf">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          View Resume
+        </a>
+      </div>
+    </div>
+
+    <!-- Skills -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Skills</div>
+      <div id="pSkills" style="display:flex;flex-wrap:wrap;gap:7px;"></div>
+    </div>
+
+    <!-- Links -->
+    <div id="pLinks" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;"></div>
+
+    <button onclick="closeProfile()" style="width:100%;padding:11px;border-radius:24px;background:transparent;border:1.5px solid rgba(217,164,65,.4);color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer;" onmouseover="this.style.background='rgba(217,164,65,.1)'" onmouseout="this.style.background='transparent'">Close</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════
+   HARDCODED INTERN DATA
+════════════════════════════════════════ */
+const PHOTOS = {
+  'Monisha K':      '../images/monisha.jpeg',
+  'Fiona Shalet':   '../images/fiona.jpeg',
+  'Stella Mary':    '../images/stella.jpeg',
+  'Bhavana R':      '../images/bhavana.jpeg',
+  'Deekshitha S':   '../images/deekshitha.jpeg',
+  'Arun Prasad':    '../images/arun.jpeg',
+  'Shonn Dias':     '../images/shonn.jpeg',
+  'Bhoomika Ravi':  '../images/bhoomika.jpeg',
+  'Hrithika Gowda': '../images/hrithika.jpeg',
+  'Vinay Kumar':    '../images/vinay.jpeg',
+};
+
+// Resume HTML files — relative to the page (adjust path if needed)
+const RESUME_FILES = {
+  'Monisha K':      'resumes/Monisha_K_Resume.html',
+  'Fiona Shalet':   'resumes/Fiona_Shalet_Resume.html',
+  'Stella Mary':    'resumes/Stella_Mary_Resume.html',
+  'Bhavana R':      'resumes/Bhavana_R_Resume.html',
+  'Deekshitha S':   'resumes/Deekshitha_S_Resume.html',
+  'Arun Prasad':    'resumes/Arun_Prasad_Resume.html',
+  'Shonn Dias':     'resumes/Shonn_Dias_Resume.html',
+  'Bhoomika Ravi':  'resumes/Bhoomika_Ravi_Resume.html',
+  'Hrithika Gowda': 'resumes/Hrithika_Gowda_Resume.html',
+  'Vinay Kumar':    'resumes/Vinay_Kumar_Resume.html',
+};
+
+const INTERNS = [
+  {
+    name:'Monisha K', role:'Full Stack Intern', track:'fullstack',
+    email:'monisha.k@ibm-intern.in', phone:'+91 98401 12345',
+    location:'Chennai, Tamil Nadu',
+    college:'Sri Sivasubramaniya Nadar College of Engineering',
+    cgpa:'8.7', linkedin:'linkedin.com/in/monishak', github:'github.com/monishak',
+    skills:['HTML','CSS','JavaScript','React','Node.js','MySQL'],
+    pct:62, status:'active', tasks_total:5, tasks_done:3,
+    color:'#d9a441',
+    summary:'Passionate Full Stack Developer with hands-on experience in React and Node.js. Focusing on database optimisation and scalable web architectures for InternSync under IBM SkillsBuild.',
+    mentor:'Raj Shamani', program:'IBM SkillsBuild', duration:'Jan 15 – Apr 15, 2026',
+  },
+  {
+    name:'Fiona Shalet', role:'Frontend Intern', track:'frontend',
+    email:'fiona.shalet@ibm-intern.in', phone:'+91 94455 67890',
+    location:'Kochi, Kerala',
+    college:'College of Engineering Trivandrum',
+    cgpa:'9.1', linkedin:'linkedin.com/in/fionashalet', github:'github.com/fionashalet',
+    skills:['HTML','CSS','Tailwind','React','Figma','TypeScript'],
+    pct:78, status:'active', tasks_total:6, tasks_done:5,
+    color:'#2dd4bf',
+    summary:'Creative Frontend Developer with strong proficiency in React and TypeScript. Passionate about pixel-perfect UI design and accessibility. Building reusable component libraries for InternSync.',
+    mentor:'Raj Shamani', program:'IBM SkillsBuild', duration:'Jan 15 – Apr 15, 2026',
+  },
+  {
+    name:'Stella Mary', role:'Backend Intern', track:'backend',
+    email:'stella.mary@ibm-intern.in', phone:'+91 90001 23456',
+    location:'Coimbatore, Tamil Nadu',
+    college:'PSG College of Technology',
+    cgpa:'7.8', linkedin:'linkedin.com/in/stellamary', github:'github.com/stellamary',
+    skills:['Node.js','Express','PHP','MySQL','REST APIs','JWT'],
+    pct:45, status:'behind', tasks_total:4, tasks_done:2,
+    color:'#ff6b6b',
+    summary:'Backend Developer Intern with focus on PHP, Node.js and REST API development. Currently building microservice modules for InternSync. Needs support to get back on track.',
+    mentor:'Raj Shamani', program:'IBM SkillsBuild', duration:'Jan 15 – Apr 15, 2026',
+  },
+  {
+    name:'Bhavana R', role:'Full Stack Intern', track:'fullstack',
+    email:'bhavana.r@ibm-intern.in', phone:'+91 87654 32100',
+    location:'Bengaluru, Karnataka',
+    college:'RV College of Engineering',
+    cgpa:'9.3', linkedin:'linkedin.com/in/bhavanar', github:'github.com/bhavanar',
+    skills:['HTML','CSS','JavaScript','React','MongoDB','Python'],
+    pct:85, status:'active', tasks_total:6, tasks_done:5,
+    color:'#4ade80',
+    summary:'Top-performing Full Stack Intern consistently delivering ahead of schedule. Designed the MySQL Schema for InternSync\'s task management module. Mentoring peers on MongoDB patterns.',
+    mentor:'Raj Shamani', program:'IBM SkillsBuild', duration:'Jan 15 – Apr 15, 2026',
+  },
+  {
+    name:'Deekshitha S', role:'UI/UX Intern', track:'frontend',
+    email:'deekshitha.s@ibm-intern.in', phone:'+91 99887 65432',
+    location:'Mysuru, Karnataka',
+    college:'JSS Science and Technology University',
+    cgpa:'8.2', linkedin:'linkedin.com/in/deekshithas', github:'github.com/deekshithas',
+    skills:['Figma','Adobe XD','HTML','CSS','Prototyping'],
+    pct:55, status:'active', tasks_total:5, tasks_done:3,
+    color:'#c084fc',
+    summary:'UI/UX Design Intern with a keen eye for user-centred design. Proficient in Figma and Adobe XD, with experience prototyping and conducting usability tests for InternSync flows.',
+    mentor:'Raj Shamani', program:'IBM SkillsBuild', duration:'Jan 15 – Apr 15, 2026',
+  },
+  {
+    name:'Arun Prasad', role:'Backend Intern', track:'backend',
+    email:'arun.prasad@ibm-intern.in', phone:'+91 91234 56789',
+    location:'Madurai, Tamil Nadu',
+    college:'Thiagarajar College of Engineering',
+    cgpa:'8.5', linkedin:'linkedin.com/in/arunprasad', github:'github.com/arunprasad',
+    skills:['PHP','MySQL','Python','Django','REST APIs','Redis'],
+    pct:70, status:'active', tasks_total:5, tasks_done:4,
+    color:'#fbbf24',
+    summary:'Experienced Backend Developer Intern with strong skills in Python, Django and Redis. Delivered the Django API module for InternSync\'s task assignment system. Smart India Hackathon finalist.',
+    mentor:'Raj Shamani', program:'IBM SkillsBuild', duration:'Jan 15 – Apr 15, 2026',
+  },
+  {
+    name:'Shonn Dias', role:'Full Stack Intern', track:'fullstack',
+    email:'shonn.dias@ibm-intern.in', phone:'+91 77788 99001',
+    location:'Goa',
+    college:'Goa College of Engineering',
+    cgpa:'7.2', linkedin:'linkedin.com/in/shonndias', github:'github.com/shonndias',
+    skills:['JavaScript','Vue.js','Node.js','PostgreSQL','Docker'],
+    pct:38, status:'risk', tasks_total:4, tasks_done:2,
+    color:'#38bdf8',
+    summary:'Full Stack Intern with experience in Vue.js and Docker. Keen on DevOps and containerisation. Currently behind on PostgreSQL integration tasks — intervention recommended.',
+    mentor:'Raj Shamani', program:'IBM SkillsBuild', duration:'Jan 15 – Apr 15, 2026',
+  },
+  {
+    name:'Bhoomika Ravi', role:'Frontend Intern', track:'frontend',
+    email:'bhoomika.ravi@ibm-intern.in', phone:'+91 96543 21098',
+    location:'Bengaluru, Karnataka',
+    college:'M S Ramaiah Institute of Technology',
+    cgpa:'9.4', linkedin:'linkedin.com/in/bhoomika-ravi', github:'github.com/bhoomika-ravi',
+    skills:['React','TypeScript','CSS','Sass','Jest','Webpack'],
+    pct:91, status:'active', tasks_total:6, tasks_done:6,
+    color:'#fb7185',
+    summary:'Top-ranked Frontend Intern with exceptional React and TypeScript skills. Completed all 6 assigned tasks and additionally conducted peer reviews. Lighthouse score of 98 on her deliverables.',
+    mentor:'Raj Shamani', program:'IBM SkillsBuild', duration:'Jan 15 – Apr 15, 2026',
+  },
+  {
+    name:'Hrithika Gowda', role:'Backend Intern', track:'backend',
+    email:'hrithika.gowda@ibm-intern.in', phone:'+91 82345 67890',
+    location:'Bengaluru, Karnataka',
+    college:'BMS College of Engineering',
+    cgpa:'7.9', linkedin:'linkedin.com/in/hrithikagowda', github:'github.com/hrithikagowda',
+    skills:['Java','Spring Boot','MySQL','AWS','REST APIs'],
+    pct:50, status:'behind', tasks_total:4, tasks_done:2,
+    color:'#818cf8',
+    summary:'Backend Developer Intern specialising in Java and Spring Boot. Building REST services and exploring AWS cloud deployment for InternSync. Actively catching up on pending tasks.',
+    mentor:'Raj Shamani', program:'IBM SkillsBuild', duration:'Jan 15 – Apr 15, 2026',
+  },
+  {
+    name:'Vinay Kumar', role:'Full Stack Intern', track:'fullstack',
+    email:'vinay.kumar@ibm-intern.in', phone:'+91 93456 78901',
+    location:'Hyderabad, Telangana',
+    college:'JNTUH College of Engineering',
+    cgpa:'8.0', linkedin:'linkedin.com/in/vinaykumar', github:'github.com/vinaykumar',
+    skills:['HTML','CSS','React','Node.js','GraphQL','MongoDB'],
+    pct:74, status:'active', tasks_total:5, tasks_done:4,
+    color:'#2dd4bf',
+    summary:'Full Stack Intern with modern JavaScript expertise, building GraphQL APIs and MongoDB integrations for InternSync. Apollo-certified. Delivered 4/5 tasks ahead of schedule.',
+    mentor:'Raj Shamani', program:'IBM SkillsBuild', duration:'Jan 15 – Apr 15, 2026',
+  },
+];
+
+let currentFilter = 'all';
+let currentView   = 'grid';
+let openName      = null;
+
+const statusCfg = {
+  active:{ label:'Active',  color:'var(--teal)',   bg:'rgba(45,212,191,.1)',  border:'rgba(45,212,191,.25)' },
+  behind:{ label:'Behind',  color:'var(--accent)', bg:'rgba(217,164,65,.1)', border:'rgba(217,164,65,.25)' },
+  risk:  { label:'At Risk', color:'var(--red)',    bg:'rgba(255,107,107,.1)',border:'rgba(255,107,107,.25)' }
+};
+
+/* ── Avatar helper ── */
+function makeAvatar(intern, size=50, fs=18) {
+  const src = PHOTOS[intern.name];
+  if (src) return `<div class="ic-avatar" style="width:${size}px;height:${size}px;border-color:${intern.color}55;"><img src="${src}" alt="${intern.name}" onerror="this.parentElement.innerHTML='<span style=\\'font-family:Syne,sans-serif;font-weight:800;font-size:${fs}px;color:${intern.color};\\'>${intern.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</span>';this.parentElement.style.background='#1e2210'"></div>`;
+  const ini = intern.name.split(' ').map(w=>w[0]).join('').slice(0,2);
+  return `<div class="ic-avatar" style="width:${size}px;height:${size}px;background:#1e2210;border-color:${intern.color}55;font-family:'Syne',sans-serif;font-weight:800;font-size:${fs}px;color:${intern.color};">${ini}</div>`;
+}
+
+/* ── Render grid ── */
+function renderInterns() {
+  const q    = (document.getElementById('searchInput').value || '').toLowerCase();
+  const grid = document.getElementById('internsGrid');
+
+  const filtered = INTERNS.filter(i => {
+    const ms = i.name.toLowerCase().includes(q) ||
+               i.role.toLowerCase().includes(q) ||
+               i.skills.some(s => s.toLowerCase().includes(q));
+    const mf = currentFilter === 'all'       ? true
+             : currentFilter === 'active'    ? i.status === 'active'
+             : currentFilter === 'behind'    ? i.status === 'behind'
+             : currentFilter === 'risk'      ? i.status === 'risk'
+             : currentFilter === 'fullstack' ? i.track === 'fullstack'
+             : currentFilter === 'frontend'  ? i.track === 'frontend'
+             : currentFilter === 'backend'   ? i.track === 'backend'
+             : true;
+    return ms && mf;
+  });
+
+  document.getElementById('sectionLabel').textContent =
+    filtered.length === INTERNS.length ? 'All Interns' : `${filtered.length} Result${filtered.length !== 1 ? 's' : ''}`;
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>No interns match your search or filter.</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map((intern, i) => {
+    const s     = statusCfg[intern.status] || statusCfg.active;
+    const chips = intern.skills.slice(0,4).map(sk=>`<span class="ic-skill">${sk}</span>`).join('') +
+                  (intern.skills.length > 4 ? `<span class="ic-skill">+${intern.skills.length-4}</span>` : '');
+    return `<div class="intern-card" id="icard-${i}" style="animation-delay:${i*60}ms">
+      <div class="ic-header">
+        ${makeAvatar(intern,50,18)}
+        <div class="ic-info">
+          <div class="ic-name">${intern.name}</div>
+          <div class="ic-role">${intern.role}</div>
+          <div class="ic-status" style="background:${s.bg};border:1px solid ${s.border};color:${s.color};">
+            <span class="ic-status-dot" style="background:${s.color};"></span>${s.label}
+          </div>
+        </div>
+      </div>
+      <div class="ic-progress-wrap">
+        <div class="ic-progress-labels">
+          <span class="ic-progress-lbl">Progress</span>
+          <span class="ic-progress-pct" style="color:${intern.color}">${intern.pct}%</span>
+        </div>
+        <div class="ic-bar"><div class="ic-bar-fill" id="bar-${i}" style="background:linear-gradient(90deg,${intern.color},${intern.color}bb)"></div></div>
+      </div>
+      <div class="ic-skills">${chips}</div>
+      <div class="ic-footer">
+        <div class="ic-tasks">Tasks: <span>${intern.tasks_done}/${intern.tasks_total}</span> done</div>
+        <button class="btn-view-profile" onclick="openProfile('${intern.name}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          View Profile
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
+  filtered.forEach((_,i) => setTimeout(() => {
+    const c = document.getElementById(`icard-${i}`);
+    if (c) c.classList.add('visible');
+  }, i*60+80));
+
+  setTimeout(() => filtered.forEach((_,i) => {
+    const b = document.getElementById(`bar-${i}`);
+    if (b) b.style.width = filtered[i].pct + '%';
+  }), 300);
+
+  // 3D tilt
+  document.querySelectorAll('.intern-card').forEach(card => {
+    card.addEventListener('mouseenter', () => card.style.transition = 'transform .12s ease,box-shadow .12s ease');
+    card.addEventListener('mousemove', e => {
+      const r  = card.getBoundingClientRect();
+      const dx = (e.clientX - r.left - r.width/2)  / (r.width/2);
+      const dy = (e.clientY - r.top  - r.height/2) / (r.height/2);
+      card.style.transform = `perspective(900px) rotateY(${dx*5}deg) rotateX(${-dy*5}deg) translateY(-5px) scale(1.015)`;
+      card.style.boxShadow = `${-dx*8}px ${-dy*8}px 28px rgba(217,164,65,.14),0 16px 40px rgba(0,0,0,.4)`;
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transition = 'transform .5s cubic-bezier(.34,1.56,.64,1),box-shadow .4s ease';
+      card.style.transform  = 'perspective(900px) rotateY(0) rotateX(0) translateY(0) scale(1)';
+      card.style.boxShadow  = '0 8px 32px rgba(0,0,0,.3)';
+      setTimeout(() => card.style.transition='', 500);
+    });
+  });
+}
+
+/* ── Open Profile Modal ── */
+function openProfile(name) {
+  const d = INTERNS.find(i => i.name === name);
+  if (!d) return;
+  openName = name;
+
+  const s   = statusCfg[d.status] || statusCfg.active;
+  const ph  = document.getElementById('pPhoto');
+  const src = PHOTOS[name];
+
+  ph.style.borderColor = (d.color || '#d9a441') + '55';
+  if (src) {
+    ph.innerHTML = `<img src="${src}" alt="${name}" onerror="this.parentElement.innerHTML='<span style=\\'font-family:Syne,sans-serif;font-weight:800;font-size:22px;color:${d.color};\\'>${name.split(' ').map(w=>w[0]).join('').slice(0,2)}</span>';this.parentElement.style.background='#1e2210'">`;
+  } else {
+    const ini = name.split(' ').map(w=>w[0]).join('').slice(0,2);
+    ph.innerHTML = `<span style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:${d.color};">${ini}</span>`;
+    ph.style.background = '#1e2210';
+  }
+
+  document.getElementById('pName').textContent      = d.name;
+  document.getElementById('pRole').textContent      = d.role + ' · IBM SkillsBuild × InternSync';
+  document.getElementById('pStatusBadge').innerHTML = `<div style="display:inline-flex;align-items:center;gap:5px;background:${s.bg};border:1px solid ${s.border};border-radius:20px;padding:3px 10px;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:${s.color};">● ${s.label}</div>`;
+  document.getElementById('pDuration').textContent  = d.duration;
+  document.getElementById('pMentor').textContent    = d.mentor;
+  document.getElementById('pLocation').textContent  = d.location;
+  document.getElementById('pProgram').textContent   = d.program;
+  document.getElementById('pCollege').textContent   = d.college;
+  document.getElementById('pCgpa').textContent      = d.cgpa + ' / 10';
+  document.getElementById('pPct').textContent       = d.pct + '%';
+  document.getElementById('pSummary').textContent   = d.summary;
+
+  // Resume link
+  const resumeFile = RESUME_FILES[name] || '#';
+  const resumeLabel = name.replace(/ /g,'_') + '_Resume.html';
+  document.getElementById('pResumeName').textContent = resumeLabel;
+  document.getElementById('pResumeBtn').href = resumeFile;
+
+  document.getElementById('pBar').style.width = '0%';
+  setTimeout(() => document.getElementById('pBar').style.width = d.pct + '%', 150);
+
+  // Skills
+  const sc = [d.color,'var(--teal)','var(--accent)','var(--green)','#c084fc','#38bdf8'];
+  document.getElementById('pSkills').innerHTML = d.skills.map((sk,i) =>
+    `<span style="display:inline-flex;align-items:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:4px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:${sc[i%sc.length]}">${sk}</span>`
+  ).join('');
+
+  // LinkedIn / GitHub
+  const links = [];
+  if (d.linkedin) links.push(`<a href="https://${d.linkedin}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:20px;background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.2);color:var(--teal);font-family:'Syne',sans-serif;font-size:10px;font-weight:700;text-decoration:none;">🔗 LinkedIn</a>`);
+  if (d.github)   links.push(`<a href="https://${d.github}"   target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--muted);font-family:'Syne',sans-serif;font-size:10px;font-weight:700;text-decoration:none;">⎇ GitHub</a>`);
+  document.getElementById('pLinks').innerHTML = links.join('');
+
+  document.getElementById('profileModal').classList.add('open');
+}
+
+function closeProfile() {
+  document.getElementById('profileModal').classList.remove('open');
+  openName = null;
+  setTimeout(() => document.getElementById('pBar').style.width = '0%', 300);
+}
+
+/* ── Filter / View ── */
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  renderInterns();
+}
+
+function setView(v) {
+  currentView = v;
+  const grid = document.getElementById('internsGrid');
+  document.getElementById('gridBtn').classList.toggle('active', v === 'grid');
+  document.getElementById('listBtn').classList.toggle('active', v === 'list');
+  grid.classList.toggle('list-view', v === 'list');
+}
+
+/* ── Mini Stats (animated) ── */
+function updateMiniStats() {
+  const active = INTERNS.filter(i => i.status === 'active').length;
+  const behind = INTERNS.filter(i => i.status === 'behind').length;
+  const risk   = INTERNS.filter(i => i.status === 'risk').length;
+  function anim(id, target, sfx='') {
+    let v = 0;
+    const el = document.getElementById(id);
+    const iv = setInterval(() => { v = Math.min(v+1, target); el.textContent = v+sfx; if(v>=target) clearInterval(iv); }, 35);
+  }
+  setTimeout(() => { anim('activeCount', active); anim('behindCount', behind); anim('riskCount', risk); }, 400);
+}
+
+/* ── Toast ── */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+/* ── Mesh BG ── */
+const cvs=document.getElementById('meshCanvas'),ctx=cvs.getContext('2d'); let W,H;
+function rsz(){ W=cvs.width=innerWidth; H=cvs.height=innerHeight; } rsz(); addEventListener('resize',rsz);
+const pts=[{ax:.65,ay:.25,rx:.3,ry:.2,fx:.00028,fy:.00016,px:0,py:1,r:620,c:'rgba(180,120,20,'},{ax:.2,ay:.65,rx:.22,ry:.28,fx:.00018,fy:.00026,px:2.4,py:0,r:540,c:'rgba(155,100,15,'},{ax:.5,ay:.1,rx:.28,ry:.2,fx:.00022,fy:.00014,px:1,py:2,r:580,c:'rgba(50,65,20,'},{ax:.88,ay:.78,rx:.2,ry:.22,fx:.00013,fy:.00031,px:.5,py:.8,r:500,c:'rgba(44,58,18,'},{ax:.08,ay:.18,rx:.18,ry:.22,fx:.00025,fy:.0002,px:3,py:1.5,r:460,c:'rgba(20,24,12,'},{ax:.55,ay:.88,rx:.24,ry:.18,fx:.00017,fy:.00023,px:1.8,py:2.7,r:490,c:'rgba(28,32,16,'}];
+function mesh(t){ ctx.fillStyle='#0f1209'; ctx.fillRect(0,0,W,H); pts.forEach(p=>{ const x=W*(p.ax+p.rx*Math.sin(p.fx*t+p.px)),y=H*(p.ay+p.ry*Math.cos(p.fy*t+p.py)),g=ctx.createRadialGradient(x,y,0,x,y,p.r); g.addColorStop(0,p.c+'0.28)'); g.addColorStop(.5,p.c+'0.08)'); g.addColorStop(1,p.c+'0)'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }); const v=ctx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,H*.88); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.55)'); ctx.fillStyle=v; ctx.fillRect(0,0,W,H); }
+let t0=null; (function loop(ts){ if(!t0)t0=ts; mesh(ts-t0); requestAnimationFrame(loop); })(0);
+
+const gl=document.getElementById('glow'); addEventListener('mousemove',e=>{ gl.style.left=e.clientX+'px'; gl.style.top=e.clientY+'px'; });
+document.querySelectorAll('.nav-item').forEach(item=>{ item.addEventListener('mousemove',e=>{ const r=item.getBoundingClientRect(); if(!item.classList.contains('active')) item.style.transform=`translateY(${(e.clientY-r.top-r.height/2)*.1}px)`; }); item.addEventListener('mouseleave',()=>{ item.style.transition='transform .4s cubic-bezier(.34,1.56,.64,1)'; item.style.transform='translateY(0)'; setTimeout(()=>item.style.transition='',400); }); });
+for(let i=0;i<10;i++){ const p=document.createElement('div'); p.className='particle'; const sz=2+Math.random()*4; Object.assign(p.style,{width:sz+'px',height:sz+'px',left:Math.random()*100+'vw',top:(60+Math.random()*40)+'vh',animationDuration:(9+Math.random()*14)+'s',animationDelay:Math.random()*10+'s'}); document.body.appendChild(p); }
+
+// ── INIT ──
+updateMiniStats();
+renderInterns();
+</script>
+</body>
+</html>

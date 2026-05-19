@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InternSync — Submissions</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{ --accent:#d9a441; --accent2:#f0c060; --bg:#0f1209; --card-bg:rgba(255,255,255,0.055); --card-border:rgba(255,255,255,0.13); --text:#f0ede4; --muted:rgba(240,237,228,0.45); --teal:#2dd4bf; --red:#ff6b6b; --green:#4ade80; --sidebar-w:240px; }
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; display:flex; flex-direction:column; }
+#meshCanvas{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+.glow{ position:fixed; width:500px; height:500px; background:radial-gradient(circle,rgba(217,164,65,.12),transparent 70%); border-radius:50%; pointer-events:none; filter:blur(80px); transform:translate(-50%,-50%); z-index:1; }
+.layout{ display:flex; flex:1; position:relative; z-index:5; }
+.sidebar{ width:var(--sidebar-w); flex-shrink:0; background:rgba(8,10,4,.7); backdrop-filter:blur(20px); border-right:1px solid rgba(255,255,255,.07); padding:24px 0; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:auto; }
+.sidebar::-webkit-scrollbar{ width:3px; }
+.sidebar::-webkit-scrollbar-thumb{ background:rgba(217,164,65,.15); border-radius:4px; }
+.sidebar-section{ font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(240,237,228,.2); padding:0 20px; margin:18px 0 8px; }
+.sidebar-section:first-child{ margin-top:0; }
+.nav-item{ display:flex; align-items:center; gap:11px; padding:10px 20px; cursor:pointer; color:var(--muted); font-size:13px; font-weight:500; transition:color .2s,background .2s; text-decoration:none; }
+.nav-item svg{ width:16px; height:16px; stroke:currentColor; flex-shrink:0; }
+.nav-item:hover{ color:var(--text); background:rgba(255,255,255,.04); }
+.nav-item.active{ color:var(--accent); background:rgba(217,164,65,.08); border-right:2px solid var(--accent); }
+.nav-item.active svg{ stroke:var(--accent); }
+.nav-badge{ margin-left:auto; background:var(--red); color:#fff; font-size:9px; font-family:'Syne',sans-serif; font-weight:700; border-radius:10px; padding:2px 6px; }
+main{ flex:1; padding:28px 32px; overflow-y:auto; }
+.page-heading{ font-family:'Syne',sans-serif; font-size:28px; font-weight:800; margin-bottom:4px; }
+.page-heading span{ color:var(--accent); }
+.page-sub{ font-size:13px; color:var(--muted); margin-bottom:24px; }
+.card{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:18px; padding:24px; backdrop-filter:blur(20px); box-shadow:0 8px 32px rgba(0,0,0,.35); position:relative; overflow:hidden; opacity:0; transform:translateY(20px); }
+.card.visible{ animation:cardIn .5s cubic-bezier(.22,1,.36,1) forwards; }
+.card::before{ content:''; position:absolute; inset:0; border-radius:18px; background:linear-gradient(135deg,rgba(217,164,65,.04),transparent 60%); pointer-events:none; }
+@keyframes cardIn{ from{opacity:0;transform:translateY(20px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.card-title{ font-family:'Syne',sans-serif; font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; }
+.stats-row{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:24px; }
+.stat-c{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:14px 16px; display:flex; align-items:center; gap:10px; transition:transform .2s,border-color .2s; }
+.stat-c:hover{ transform:translateY(-2px); border-color:rgba(217,164,65,.2); }
+.stat-c-icon{ width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.stat-c-icon svg{ width:15px; height:15px; }
+.stat-c-val{ font-family:'Syne',sans-serif; font-size:22px; font-weight:800; line-height:1; }
+.stat-c-lbl{ font-size:10px; color:var(--muted); margin-top:2px; text-transform:uppercase; letter-spacing:.06em; }
+.toolbar{ display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+.search-wrap{ position:relative; flex:1; min-width:180px; }
+.search-wrap svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:14px; height:14px; stroke:var(--muted); pointer-events:none; }
+.search-input{ width:100%; padding:10px 14px 10px 36px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.09); border-radius:12px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; outline:none; transition:all .2s; }
+.search-input:focus{ border-color:rgba(217,164,65,.4); background:rgba(255,255,255,.09); }
+.search-input::placeholder{ color:rgba(240,237,228,.25); }
+.filter-pills{ display:flex; gap:7px; flex-wrap:wrap; }
+.fp{ padding:7px 14px; border-radius:20px; font-size:11px; font-family:'Syne',sans-serif; font-weight:700; cursor:pointer; border:1px solid rgba(255,255,255,.1); color:var(--muted); background:transparent; transition:all .2s; letter-spacing:.04em; }
+.fp:hover{ border-color:rgba(217,164,65,.3); color:var(--accent); }
+.fp.active{ background:rgba(217,164,65,.12); border-color:rgba(217,164,65,.35); color:var(--accent); }
+.main-grid{ display:grid; grid-template-columns:1fr 1.4fr; gap:18px; }
+.intern-list{ display:flex; flex-direction:column; gap:8px; max-height:600px; overflow-y:auto; padding-right:2px; }
+.intern-list::-webkit-scrollbar{ width:3px; }
+.intern-list::-webkit-scrollbar-thumb{ background:rgba(217,164,65,.2); border-radius:4px; }
+.intern-sub-item{ display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); border-radius:12px; padding:12px 14px; cursor:pointer; transition:all .22s; position:relative; overflow:hidden; }
+.intern-sub-item::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px 0 0 3px; opacity:0; transition:opacity .2s; background:var(--accent); }
+.intern-sub-item:hover{ background:rgba(255,255,255,.08); border-color:rgba(217,164,65,.2); transform:translateX(3px); }
+.intern-sub-item.active-sel{ background:rgba(217,164,65,.1); border-color:rgba(217,164,65,.35); }
+.intern-sub-item.active-sel::before{ opacity:1; }
+.isi-av{ width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:13px; flex-shrink:0; overflow:hidden; }
+.isi-av img{ width:100%; height:100%; object-fit:cover; object-position:center top; display:block; border-radius:50%; }
+.isi-info{ flex:1; min-width:0; }
+.isi-name{ font-size:13px; font-weight:600; color:var(--text); }
+.isi-role{ font-size:11px; color:var(--muted); margin-top:1px; }
+.isi-count{ font-family:'Syne',sans-serif; font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; flex-shrink:0; }
+.detail-panel{ display:flex; flex-direction:column; gap:14px; }
+.sub-card{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-radius:14px; overflow:hidden; transition:border-color .2s,box-shadow .2s; }
+.sub-card:hover{ border-color:rgba(217,164,65,.2); box-shadow:0 4px 20px rgba(217,164,65,.08); }
+.sub-card-header{ display:flex; align-items:center; gap:12px; padding:14px 16px; border-bottom:1px solid transparent; cursor:pointer; transition:border-color .2s; }
+.sub-card-header.open{ border-bottom-color:rgba(255,255,255,.05); }
+.sub-file-icon{ width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.sub-info{ flex:1; min-width:0; }
+.sub-title{ font-size:13px; font-weight:600; color:var(--text); margin-bottom:3px; }
+.sub-meta{ font-size:11px; color:var(--muted); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.sub-badge{ display:inline-flex; align-items:center; gap:3px; font-family:'Syne',sans-serif; font-size:9px; font-weight:700; padding:2px 7px; border-radius:20px; letter-spacing:.04em; }
+.sub-status-wrap{ display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0; }
+.status-pending  { background:rgba(240,237,228,.07); border:1px solid rgba(240,237,228,.15); color:var(--muted); }
+.status-reviewing{ background:rgba(217,164,65,.1);  border:1px solid rgba(217,164,65,.25);  color:var(--accent); }
+.status-approved { background:rgba(45,212,191,.1);  border:1px solid rgba(45,212,191,.25);  color:var(--teal); }
+.status-rejected { background:rgba(255,107,107,.1); border:1px solid rgba(255,107,107,.25); color:var(--red); }
+/* live badge for DB submissions */
+.badge-live{ display:inline-flex;align-items:center;gap:4px;font-family:'Syne',sans-serif;font-size:8px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.06em;background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.25);color:var(--teal); }
+.badge-live::before{ content:'';width:5px;height:5px;border-radius:50%;background:var(--teal);animation:pulse 1.5s ease infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+.sub-card-body{ padding:0 16px; max-height:0; overflow:hidden; transition:max-height .4s cubic-bezier(.4,0,.2,1), padding .3s; }
+.sub-card-body.open{ max-height:700px; padding:14px 16px; }
+.file-preview-box{ background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.06); border-radius:10px; overflow:hidden; margin-bottom:14px; min-height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.file-preview-placeholder{ text-align:center; padding:28px; }
+.file-preview-placeholder p{ font-size:13px; color:var(--muted); margin:10px 0 16px; line-height:1.6; }
+.github-row{ display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); border-radius:10px; padding:10px 14px; margin-bottom:14px; }
+.github-row svg{ width:16px; height:16px; stroke:var(--muted); flex-shrink:0; }
+.github-link{ font-size:12px; color:var(--teal); text-decoration:none; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.github-link:hover{ text-decoration:underline; }
+.sub-actions{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.btn-action{ padding:8px 16px; border-radius:20px; font-family:'Syne',sans-serif; font-size:11px; font-weight:700; cursor:pointer; letter-spacing:.04em; transition:all .2s; display:flex; align-items:center; gap:5px; border:1px solid transparent; }
+.btn-action svg{ width:12px; height:12px; stroke:currentColor; }
+.btn-approve{ background:rgba(45,212,191,.12); border-color:rgba(45,212,191,.3); color:var(--teal); }
+.btn-approve:hover{ background:rgba(45,212,191,.22); box-shadow:0 0 12px rgba(45,212,191,.2); }
+.btn-reject{ background:rgba(255,107,107,.1); border-color:rgba(255,107,107,.28); color:var(--red); }
+.btn-reject:hover{ background:rgba(255,107,107,.2); box-shadow:0 0 12px rgba(255,107,107,.2); }
+.btn-feedback{ background:rgba(217,164,65,.1); border-color:rgba(217,164,65,.25); color:var(--accent); }
+.btn-feedback:hover{ background:rgba(217,164,65,.2); }
+.btn-download{ background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.12); color:var(--muted); }
+.btn-download:hover{ border-color:rgba(217,164,65,.3); color:var(--accent); }
+.empty-panel{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; text-align:center; }
+.empty-panel svg{ width:52px; height:52px; stroke:rgba(217,164,65,.25); margin-bottom:16px; }
+.empty-panel h3{ font-family:'Syne',sans-serif; font-size:16px; font-weight:700; color:var(--muted); margin-bottom:6px; }
+.empty-panel p{ font-size:12px; color:rgba(240,237,228,.3); }
+.modal-overlay{ position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,.75); backdrop-filter:blur(14px); display:none; justify-content:center; align-items:center; padding:20px; }
+.modal-overlay.open{ display:flex; }
+.modal-box{ background:#141810; border:1px solid rgba(217,164,65,.25); border-radius:18px; padding:26px; width:480px; max-width:100%; max-height:88vh; overflow-y:auto; box-shadow:0 32px 80px rgba(0,0,0,.85); animation:modalIn .3s cubic-bezier(.22,1,.36,1); }
+@keyframes modalIn{ from{opacity:0;transform:translateY(14px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.toast{ position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); background:rgba(18,22,10,.97); border:1px solid rgba(217,164,65,.35); color:#fff; padding:11px 22px; border-radius:30px; font-size:13px; opacity:0; pointer-events:none; transition:opacity .3s,transform .3s; z-index:9999; white-space:nowrap; }
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.particle{ position:fixed; border-radius:50%; background:rgba(217,164,65,.12); pointer-events:none; z-index:2; animation:floatUp linear infinite; }
+@keyframes floatUp{ 0%{transform:translateY(0) scale(1);opacity:.4} 50%{transform:translateY(-70px) scale(1.1);opacity:.15} 100%{transform:translateY(-140px) scale(.8);opacity:0} }
+/* refresh btn */
+.refresh-btn{ padding:7px 14px; border-radius:20px; font-size:11px; font-family:'Syne',sans-serif; font-weight:700; cursor:pointer; border:1px solid rgba(45,212,191,.25); color:var(--teal); background:rgba(45,212,191,.08); transition:all .2s; display:flex; align-items:center; gap:5px; }
+.refresh-btn:hover{ background:rgba(45,212,191,.16); }
+.refresh-btn svg{ width:12px; height:12px; stroke:currentColor; }
+.spinning{ animation:spin .8s linear infinite; }
+@keyframes spin{ to{transform:rotate(360deg)} }
+</style>
+</head>
+<body>
+<canvas id="meshCanvas"></canvas>
+<div class="glow" id="glow"></div>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Overview</div>
+    <a class="nav-item" href="mentor-dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" href="mentor-profile.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      My Profile
+    </a>
+    <a class="nav-item" href="mentor-interns.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      My Interns
+    </a>
+    <a class="nav-item" href="mentor-attendance.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 16 11 18 15 14"/></svg>
+      Attendance
+    </a>
+    <div class="sidebar-section">Tasks</div>
+    <a class="nav-item" href="mentor-assign.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Assign Tasks
+      <span class="nav-badge">3</span>
+    </a>
+    <a class="nav-item active" href="mentor-submissions.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Submissions
+      <span class="nav-badge" id="pendingNavBadge">5</span>
+    </a>
+    <a class="nav-item" href="mentor-feedback.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Give Feedback
+    </a>
+    <div class="sidebar-section">Manage</div>
+    <a class="nav-item" href="mentor-leave.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      Leave Requests
+      <span class="nav-badge">2</span>
+    </a>
+    <a class="nav-item" href="mentor-content.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+      Manage Content
+    </a>
+    <a class="nav-item" href="mentor-certificate.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+      Certificates
+    </a>
+    <div class="sidebar-section">Communication</div>
+    <a class="nav-item" href="mentor-pvtchat.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>
+      Chat with Interns
+    </a>
+  </aside>
+
+  <main>
+    <div class="page-heading">Submission <span>Review</span></div>
+    <div class="page-sub">Review intern submissions, view documents, give feedback and approve or reject work.</div>
+
+    <div class="stats-row">
+      <div class="stat-c"><div class="stat-c-icon" style="background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.2)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div><div><div class="stat-c-val" style="color:var(--accent)" id="stTotal">0</div><div class="stat-c-lbl">Total</div></div></div>
+      <div class="stat-c"><div class="stat-c-icon" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="stat-c-val" style="color:var(--muted)" id="stPending">0</div><div class="stat-c-lbl">Pending</div></div></div>
+      <div class="stat-c"><div class="stat-c-icon" style="background:rgba(217,164,65,.12);border:1px solid rgba(217,164,65,.2)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div><div><div class="stat-c-val" style="color:var(--accent)" id="stReviewing">0</div><div class="stat-c-lbl">Reviewing</div></div></div>
+      <div class="stat-c"><div class="stat-c-icon" style="background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.2)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="stat-c-val" style="color:var(--teal)" id="stApproved">0</div><div class="stat-c-lbl">Approved</div></div></div>
+      <div class="stat-c"><div class="stat-c-icon" style="background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.2)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div><div><div class="stat-c-val" style="color:var(--red)" id="stRejected">0</div><div class="stat-c-lbl">Rejected</div></div></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-input" type="text" placeholder="Search by intern or task…" id="searchInput" oninput="renderInternList()">
+      </div>
+      <div class="filter-pills">
+        <button class="fp active" onclick="setFilter('all',this)">All</button>
+        <button class="fp" onclick="setFilter('pending',this)">Pending</button>
+        <button class="fp" onclick="setFilter('reviewing',this)">Reviewing</button>
+        <button class="fp" onclick="setFilter('approved',this)">Approved</button>
+        <button class="fp" onclick="setFilter('rejected',this)">Rejected</button>
+      </div>
+      <!-- Refresh button to re-fetch live DB submissions -->
+      <button class="refresh-btn" onclick="fetchLiveSubmissions()" id="refreshBtn" title="Refresh live submissions from server">
+        <svg id="refreshIcon" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        Refresh
+      </button>
+    </div>
+
+    <div class="main-grid">
+      <div class="card" id="c1">
+        <div class="card-title">
+          Interns <span id="internListCount" style="color:var(--teal);font-size:10px;"></span>
+          <span id="liveIndicator" style="font-size:9px;color:var(--muted);font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0;font-weight:400;"></span>
+        </div>
+        <div class="intern-list" id="internList"></div>
+      </div>
+      <div class="card" id="c2">
+        <div id="detailPanel">
+          <div class="empty-panel">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <h3>Select an Intern</h3>
+            <p>Click any intern on the left to view their submission history and documents.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- FEEDBACK MODAL -->
+<div class="modal-overlay" id="feedbackModal">
+  <div class="modal-box">
+    <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--accent);margin-bottom:4px;" id="fbModalTitle">Write Feedback</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;" id="fbModalSub"></div>
+    <label style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;">Rating</label>
+    <div style="display:flex;gap:10px;margin-bottom:16px;" id="starRow">
+      <div class="star" data-n="1" onclick="setStar(1)" style="font-size:24px;cursor:pointer;transition:transform .15s;user-select:none;">&#9734;</div>
+      <div class="star" data-n="2" onclick="setStar(2)" style="font-size:24px;cursor:pointer;transition:transform .15s;user-select:none;">&#9734;</div>
+      <div class="star" data-n="3" onclick="setStar(3)" style="font-size:24px;cursor:pointer;transition:transform .15s;user-select:none;">&#9734;</div>
+      <div class="star" data-n="4" onclick="setStar(4)" style="font-size:24px;cursor:pointer;transition:transform .15s;user-select:none;">&#9734;</div>
+      <div class="star" data-n="5" onclick="setStar(5)" style="font-size:24px;cursor:pointer;transition:transform .15s;user-select:none;">&#9734;</div>
+    </div>
+    <label style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:7px;">Feedback</label>
+    <textarea id="fbText" style="width:100%;padding:11px 14px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.06);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;resize:none;outline:none;min-height:100px;transition:all .2s;" placeholder="Write detailed feedback for this submission…"></textarea>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button onclick="closeFeedbackModal()" style="flex:1;padding:10px;border-radius:20px;background:transparent;border:1px solid rgba(255,255,255,.15);color:var(--muted);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Cancel</button>
+      <button onclick="submitFeedback()" style="flex:2;padding:10px;border-radius:20px;background:var(--accent);border:none;color:#1a1d0f;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Send Feedback</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://localhost:3000/api';
+const BACKEND_ORIGIN = 'http://localhost:3000';
+
+/* ── HARDCODED BASE DATA (always present) ── */
+const INTERNS=[
+  {name:'Monisha K',  role:'Full Stack Intern', color:'#d9a441', bg:'rgba(217,164,65'},
+  {name:'Fiona shalet', role:'Frontend Intern',   color:'#2dd4bf', bg:'rgba(45,212,191'},
+  {name:'Stella Mary',role:'Backend Intern',    color:'#ff6b6b', bg:'rgba(255,107,107'},
+  {name:'Bhavana R', role:'Full Stack Intern', color:'#4ade80', bg:'rgba(74,222,128'},
+  {name:'Deekshitha S', role:'UI/UX Intern',      color:'#c084fc', bg:'rgba(168,85,247'},
+  {name:'Arun Prasad', role:'Backend Intern',     color:'#fbbf24', bg:'rgba(251,191,36'},
+  {name:'Shonn Dias',  role:'Full Stack Intern', color:'#38bdf8', bg:'rgba(56,189,248'},
+  {name:'Bhoomika Ravi', role:'Frontend Intern',   color:'#fb7185', bg:'rgba(251,113,133'},
+  {name:'Hrithika Gowda', role:'Backend Intern',    color:'#818cf8', bg:'rgba(99,102,241'},
+  {name:'Vinay Kumar',role:'Full Stack Intern', color:'#2dd4bf', bg:'rgba(20,184,166'},
+];
+
+const photoMap = {
+  'Monisha K':  '../images/monisha.jpeg',
+  'Fiona shalet': '../images/fiona.jpeg',
+  'Stella Mary':'../images/stella.jpeg',
+  'Bhavana R': '../images/bhavana.jpeg',
+  'Deekshitha S': '../images/deekshitha.jpeg',
+  'Arun Prasad':'../images/arun.jpeg',
+  'Shonn Dias':  '../images/shonn.jpeg',
+  'Bhoomika Ravi': '../images/bhoomika.jpeg',
+  'Hrithika Gowda': '../images/hrithika.jpeg',
+  'Vinay Kumar':'../images/vinay.jpeg',
+};
+
+/* Hardcoded submissions — these always show */
+const HARDCODED_SUBS=[
+  {id:'h1', intern:'Monisha K',  task:'Database Optimisation',    type:'pdf',  file:'Database_Optimisation_Monisha.pdf',  github:'https://github.com/monisha/db-opt',         date:'2026-03-20',status:'pending',  feedback:'',rating:0,size:'2.3 MB', source:'hardcoded'},
+  {id:'h2', intern:'Monisha K',  task:'Login Page UI',             type:'docx', file:'Login_UI_Report_Monisha.docx',        github:'https://github.com/monisha/login-ui',        date:'2026-03-15',status:'approved', feedback:'Excellent work! Clean responsive design with great micro-interactions.',rating:5,size:'1.1 MB', source:'hardcoded'},
+  {id:'h3', intern:'Monisha K',  task:'Auth Flow Setup',           type:'pdf',  file:'Auth_Flow_Documentation.pdf',         github:'https://github.com/monisha/auth-flow',       date:'2026-03-10',status:'approved', feedback:'Well-structured auth implementation. JWT handling is solid.',rating:4,size:'890 KB', source:'hardcoded'},
+  {id:'h4', intern:'Fiona shalet', task:'React Component Library',   type:'pdf',  file:'Component_Library_Fiona.pdf',         github:'https://github.com/fiona/component-lib',     date:'2026-03-19',status:'reviewing',feedback:'',rating:0,size:'3.1 MB', source:'hardcoded'},
+  {id:'h5', intern:'Fiona shalet', task:'Responsive Dashboard UI',   type:'docx', file:'Dashboard_Report_Fiona.docx',         github:'https://github.com/fiona/dashboard',         date:'2026-03-12',status:'approved', feedback:'Outstanding responsiveness across all breakpoints.',rating:5,size:'1.4 MB', source:'hardcoded'},
+  {id:'h6', intern:'Stella Mary',task:'REST API Documentation',    type:'pdf',  file:'API_Docs_Stella.pdf',                  github:'https://github.com/stella/api-docs',          date:'2026-03-18',status:'pending',  feedback:'',rating:0,size:'1.7 MB', source:'hardcoded'},
+  {id:'h7', intern:'Stella Mary',task:'JWT Authentication',        type:'docx', file:'JWT_Implementation_Stella.docx',       github:'https://github.com/stella/jwt-auth',          date:'2026-03-08',status:'rejected', feedback:'Authentication logic has security gaps. Please review token expiry handling.',rating:2,size:'760 KB', source:'hardcoded'},
+  {id:'h8', intern:'Arun Prasad', task:'MySQL Schema Design',       type:'pdf',  file:'Schema_Design_Arun.pdf',             github:'https://github.com/arun/mysql-schema',      date:'2026-03-17',status:'approved', feedback:'Excellent ER diagram and normalization. Indexes are well-placed.',rating:5,size:'2.0 MB', source:'hardcoded'},
+  {id:'h9', intern:'Bhavana R', task:'Figma Prototype Design',    type:'pdf',  file:'Figma_Proto_Bhavana.pdf',                 github:'https://github.com/bhavana/mysql-schema', date:'2026-03-16',status:'reviewing',feedback:'',rating:0,size:'5.2 MB', source:'hardcoded'},
+  {id:'h10',intern:'Deekshitha S',task:'Python Backend Script',     type:'docx', file:'Python_Backend_Deekshitha.docx',            github:'https://github.com/deekshitha/python-backend', date:'2026-03-14',status:'approved', feedback:'Clean code structure. Django models are well-designed.',rating:4,size:'980 KB', source:'hardcoded'},
+  {id:'h11',intern:'Shonn Dias',  task:'Vue.js Dashboard',          type:'pdf',  file:'VueDashboard_Shonn.pdf',              github:'https://github.com/shonn/vue-dash',          date:'2026-03-13',status:'pending',  feedback:'',rating:0,size:'1.9 MB', source:'hardcoded'},
+  {id:'h12',intern:'Bhoomika Ravi', task:'TypeScript Components',     type:'pdf',  file:'TS_Components_Bhoomika.pdf',              github:'https://github.com/bhoomika/ts-components', date:'2026-03-20',status:'pending',  feedback:'',rating:0,size:'1.3 MB', source:'hardcoded'},
+  {id:'h13',intern:'Hrithika Gowda', task:'Spring Boot API',           type:'docx', file:'SpringBoot_API_Hrithika.docx',             github:'https://github.com/hrithika/spring-api',   date:'2026-03-11',status:'rejected', feedback:'API endpoint structure needs rework. Missing error handling for edge cases.',rating:2,size:'840 KB', source:'hardcoded'},
+  {id:'h14',intern:'Vinay Kumar',task:'GraphQL Integration',       type:'pdf',  file:'GraphQL_Vinay.pdf',                    github:'https://github.com/vinay/graphql-app',        date:'2026-03-18',status:'reviewing',feedback:'',rating:0,size:'2.2 MB', source:'hardcoded'},
+];
+
+/* Live SUBS array = hardcoded + DB-fetched (merged, deduplicated) */
+let SUBS = [...HARDCODED_SUBS];
+
+/* ── Convert DB row → SUBS-compatible object ── */
+function dbRowToSub(r) {
+  const ext = (r.file_name || '').split('.').pop().toLowerCase();
+  const type = ext === 'pdf' ? 'pdf' : (ext === 'docx' ? 'docx' : (ext === 'doc' ? 'doc' : 'pdf'));
+  // Map DB status: on_time/late → pending for display; keep approved/rejected/reviewing as-is
+  let status = (r.status || 'pending').toLowerCase();
+  if (status === 'on_time' || status === 'late') status = 'pending';
+
+  return {
+    id: 'db_' + r.id,
+    dbId: r.id,                          // keep real DB id for feedback PUT
+    intern: 'Monisha K',                 // all DB submissions are from Monisha K (intern login)
+    internName: r.intern_name || 'Monisha K',
+    task: r.task_name || 'Unnamed Task',
+    type,
+    file: r.file_name || 'No file',
+    filePath: r.file_path || null,
+    github: r.github_url || '',
+    date: r.submitted_at ? r.submitted_at.split('T')[0] : new Date().toISOString().split('T')[0],
+    status,
+    feedback: r.feedback || '',
+    rating: 0,
+    size: '—',
+    source: 'live'                       // marks this as a real DB entry
+  };
+}
+
+/* ── Fetch live submissions from /api/submissions/all ── */
+async function fetchLiveSubmissions() {
+  const btn = document.getElementById('refreshBtn');
+  const icon = document.getElementById('refreshIcon');
+  const indicator = document.getElementById('liveIndicator');
+  icon.classList.add('spinning');
+  btn.disabled = true;
+  indicator.textContent = 'Fetching…';
+
+  try {
+    const res = await fetch(`${API}/submissions/all`);
+    if (!res.ok) throw new Error(`Server ${res.status}`);
+    const rows = await res.json();
+
+    // Remove previously fetched live entries, keep hardcoded ones
+    SUBS = [...HARDCODED_SUBS];
+
+    if (Array.isArray(rows) && rows.length > 0) {
+      const liveEntries = rows.map(dbRowToSub);
+
+      // Deduplicate: if a live entry's task_name matches a hardcoded one for same intern, skip adding duplicate
+      liveEntries.forEach(live => {
+        const isDupe = HARDCODED_SUBS.some(h =>
+          h.intern.toLowerCase() === live.intern.toLowerCase() &&
+          h.task.toLowerCase() === live.task.toLowerCase()
+        );
+        if (!isDupe) {
+          SUBS.push(live);
+        }
+      });
+
+      const newCount = liveEntries.filter(l => !HARDCODED_SUBS.some(h =>
+        h.intern.toLowerCase() === l.intern.toLowerCase() &&
+        h.task.toLowerCase() === l.task.toLowerCase()
+      )).length;
+
+      indicator.textContent = newCount > 0 ? `+${newCount} live` : 'Up to date';
+      showToast(`✓ Loaded ${rows.length} DB submissions (${newCount} new)`);
+    } else {
+      indicator.textContent = 'No live data';
+      showToast('No new submissions found in DB');
+    }
+  } catch (e) {
+    indicator.textContent = '⚠ Offline';
+    showToast('Could not reach server — showing cached data');
+  } finally {
+    icon.classList.remove('spinning');
+    btn.disabled = false;
+    renderInternList();
+    if (selectedIntern) renderDetail(selectedIntern);
+    updateStats();
+  }
+}
+
+/* ── Helpers ── */
+function avatarContent(name) {
+  const url = photoMap[name];
+  if (url) return `<img src="${url}" alt="${name}" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;border-radius:50%;">`;
+  return name.split(' ').map(w=>w[0]).join('').slice(0,2);
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let currentFilter='all', selectedIntern=null, currentFbId=null, currentStarRating=0;
+
+function setFilter(f,el){
+  currentFilter=f;
+  document.querySelectorAll('.fp').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  renderInternList();
+}
+
+function getInternSubs(name){
+  let s=SUBS.filter(x=>x.intern===name||x.internName===name);
+  if(currentFilter!=='all') s=s.filter(x=>x.status===currentFilter);
+  return s;
+}
+
+function renderInternList(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  // Build a combined intern list: hardcoded INTERNS + any extra interns from live data
+  const allInternNames = [...new Set(SUBS.map(s=>s.intern))];
+  const internObjects = allInternNames.map(name => {
+    const found = INTERNS.find(i=>i.name===name||i.name.toLowerCase()===name.toLowerCase());
+    return found || {name, role:'Intern', color:'#d9a441', bg:'rgba(217,164,65'};
+  });
+
+  const filtered=internObjects.filter(i=>{
+    const s=SUBS.filter(x=>x.intern===i.name||x.internName===i.name);
+    return s.length&&(i.name.toLowerCase().includes(q)||s.some(x=>x.task.toLowerCase().includes(q)));
+  });
+
+  document.getElementById('internListCount').textContent=filtered.length+' interns';
+  document.getElementById('internList').innerHTML=filtered.map(i=>{
+    const subs=getInternSubs(i.name);
+    const liveCount=subs.filter(s=>s.source==='live').length;
+    const pending=subs.filter(s=>s.status==='pending'||s.status==='reviewing').length;
+    const sel=selectedIntern===i.name;
+    const avContent=avatarContent(i.name);
+    return `<div class="intern-sub-item${sel?' active-sel':''}" onclick="selectIntern('${i.name.replace(/'/g,"\\'")}')">
+      <div class="isi-av" style="background:linear-gradient(135deg,${i.bg},.35),${i.bg},.1));color:${i.color};">${avContent}</div>
+      <div class="isi-info">
+        <div class="isi-name">${i.name}${liveCount>0?` <span style="font-size:9px;color:var(--teal);font-family:'Syne',sans-serif;font-weight:700;">+${liveCount} live</span>`:''}</div>
+        <div class="isi-role">${i.role} · ${subs.length} sub${subs.length!==1?'s':''}</div>
+      </div>
+      ${pending>0
+        ?`<span class="isi-count" style="background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.2);color:var(--red);">${pending} ⏳</span>`
+        :`<span class="isi-count" style="background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.15);color:var(--teal);">✓</span>`
+      }
+    </div>`;
+  }).join('');
+  updateStats();
+}
+
+function selectIntern(name){ selectedIntern=name; renderInternList(); renderDetail(name); }
+
+function renderDetail(name){
+  const i=INTERNS.find(x=>x.name===name)||{name,role:'Intern',color:'#d9a441',bg:'rgba(217,164,65'};
+  const subs=SUBS.filter(x=>x.intern===name||x.internName===name);
+  const panel=document.getElementById('detailPanel');
+  if(!subs.length){
+    panel.innerHTML=`<div class="empty-panel"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg><h3>No Submissions</h3><p>${name} has not submitted anything yet.</p></div>`;
+    return;
+  }
+  const counts=['approved','rejected','pending'].map(st=>({st,n:subs.filter(s=>s.status===st||(st==='pending'&&s.status==='reviewing')).length}));
+  const cfgs={
+    approved:{c:'var(--teal)', bg:'rgba(45,212,191,.1)',   b:'rgba(45,212,191,.2)'},
+    rejected:{c:'var(--red)',  bg:'rgba(255,107,107,.08)', b:'rgba(255,107,107,.18)'},
+    pending: {c:'var(--muted)',bg:'rgba(255,255,255,.05)', b:'rgba(255,255,255,.1)'}
+  };
+  const avContent=avatarContent(name);
+  const liveCount=subs.filter(s=>s.source==='live').length;
+  panel.innerHTML=`
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.06);">
+      <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,${i.bg},.35),${i.bg},.1));color:${i.color};border:2px solid ${i.color}44;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:17px;flex-shrink:0;overflow:hidden;">${avContent}</div>
+      <div style="flex:1">
+        <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text);margin-bottom:2px;">${name}</div>
+        <div style="font-size:12px;color:var(--muted);">${i.role} · ${subs.length} submission${subs.length!==1?'s':''}${liveCount>0?` · <span style="color:var(--teal);">${liveCount} from DB</span>`:''}</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        ${counts.map(({st,n})=>`<div style="text-align:center;background:${cfgs[st].bg};border:1px solid ${cfgs[st].b};border-radius:10px;padding:6px 12px;"><div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:${cfgs[st].c};line-height:1;">${n}</div><div style="font-size:9px;color:${cfgs[st].c};margin-top:2px;text-transform:uppercase;letter-spacing:.06em;">${st}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="detail-panel" id="subCards">${subs.map(s=>renderSubCard(s)).join('')}</div>`;
+}
+
+function renderSubCard(s){
+  const pdf=s.type==='pdf',fc=pdf?'var(--red)':'var(--teal)',fb=pdf?'rgba(255,107,107,.12)':'rgba(45,212,191,.1)',fbr=pdf?'rgba(255,107,107,.2)':'rgba(45,212,191,.2)';
+  const fi=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${fc}" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>${pdf?'<line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>':''}</svg>`;
+  const sl={pending:'Pending Review',reviewing:'Under Review',approved:'Approved',rejected:'Rejected'};
+  const dl=new Date(s.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  const stars=s.rating>0?'⭐'.repeat(s.rating)+'☆'.repeat(5-s.rating):'';
+  const isLive = s.source === 'live';
+  // Build the file link: for live entries use the backend URL, for hardcoded show placeholder
+  const fileUrl = isLive && s.filePath ? `${BACKEND_ORIGIN}/${s.filePath.replace(/^\.?[\/\\]/,'')}` : null;
+
+  return `<div class="sub-card" id="scard-${s.id}">
+    <div class="sub-card-header" id="shdr-${s.id}" onclick="toggleCard('${s.id}')">
+      <div class="sub-file-icon" style="background:${fb};border:1px solid ${fbr};">${fi}</div>
+      <div class="sub-info">
+        <div class="sub-title">${escHtml(s.task)} ${isLive?'<span class="badge-live">LIVE</span>':''}</div>
+        <div class="sub-meta">
+          <span>${escHtml(s.file)}</span>
+          <span class="sub-badge" style="background:${fb};border:1px solid ${fbr};color:${fc};">${s.type.toUpperCase()} · ${s.size}</span>
+          <span>${dl}</span>
+        </div>
+      </div>
+      <div class="sub-status-wrap">
+        <span class="sub-badge status-${s.status}">${sl[s.status]||s.status}</span>
+        ${stars?`<span style="font-size:11px;">${stars}</span>`:''}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .3s;" id="chevron-${s.id}"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </div>
+    <div class="sub-card-body" id="scbody-${s.id}">
+      <div class="file-preview-box" id="fpbox-${s.id}">
+        <div class="file-preview-placeholder">
+          <div style="width:52px;height:52px;background:${fb};border:1px solid ${fbr};border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto;">${fi.replace('width="18" height="18"','width="26" height="26"')}</div>
+          <p><strong style="color:var(--text);font-size:14px;">${escHtml(s.file)}</strong><br>${s.type.toUpperCase()} Document · ${s.size}</p>
+          ${fileUrl
+            ? `<a href="${escHtml(fileUrl)}" target="_blank" rel="noopener" style="padding:9px 22px;border-radius:22px;background:var(--accent);border:none;color:#1a1d0f;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Open File</a>`
+            : `<button onclick="viewFile('${s.id}')" style="padding:9px 22px;border-radius:22px;background:var(--accent);border:none;color:#1a1d0f;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>View Document</button>`
+          }
+        </div>
+      </div>
+      ${s.github?`<div class="github-row"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg><a class="github-link" href="${escHtml(s.github)}" target="_blank">${escHtml(s.github)}</a><button onclick="window.open('${escHtml(s.github)}','_blank')" style="padding:4px 12px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--muted);font-family:'Syne',sans-serif;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">&#8599; Open</button></div>`:''}
+      ${s.feedback?`<div style="background:linear-gradient(135deg,rgba(217,164,65,.08),rgba(217,164,65,.02));border:1px solid rgba(217,164,65,.18);border-radius:10px;padding:12px 14px;margin-bottom:14px;"><div style="font-size:9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:6px;">Your Feedback ${s.rating?'· '+'⭐'.repeat(s.rating):''}</div><div style="font-size:13px;color:var(--muted);line-height:1.65;">${escHtml(s.feedback)}</div></div>`:''}
+      <div class="sub-actions">
+        ${s.status!=='approved'?`<button class="btn-action btn-approve" onclick="setStatus('${s.id}','approved')"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Approve</button>`:''}
+        ${s.status!=='rejected'?`<button class="btn-action btn-reject" onclick="setStatus('${s.id}','rejected')"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Reject</button>`:''}
+        <button class="btn-action btn-feedback" onclick="openFeedback('${s.id}','${s.task.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>${s.feedback?'Edit':'Give'} Feedback</button>
+        ${fileUrl?`<a class="btn-action btn-download" href="${escHtml(fileUrl)}" download target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download</a>`:`<button class="btn-action btn-download" onclick="showToast('&#128229; Downloading...')"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download</button>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleCard(id){
+  const body=document.getElementById('scbody-'+id),hdr=document.getElementById('shdr-'+id),chev=document.getElementById('chevron-'+id),open=body.classList.contains('open');
+  document.querySelectorAll('.sub-card-body').forEach(b=>b.classList.remove('open'));
+  document.querySelectorAll('.sub-card-header').forEach(h=>h.classList.remove('open'));
+  document.querySelectorAll('[id^=chevron-]').forEach(c=>c.style.transform='rotate(0)');
+  if(!open){ body.classList.add('open'); hdr.classList.add('open'); if(chev) chev.style.transform='rotate(180deg)'; }
+}
+
+function viewFile(id){
+  const s=SUBS.find(x=>x.id===id||x.id===String(id)); if(!s) return;
+  const box=document.getElementById('fpbox-'+id),pdf=s.type==='pdf',fc=pdf?'var(--red)':'var(--teal)',fb=pdf?'rgba(255,107,107,.1)':'rgba(45,212,191,.1)',fbr=pdf?'rgba(255,107,107,.2)':'rgba(45,212,191,.2)';
+  const rows=['Introduction','Methodology','Results','Conclusion','References'],widths=[[90,100,55],[75,88,78],[85,70,90],[60,95,45],[80,65,72]];
+  box.innerHTML=`<div style="width:100%;display:flex;flex-direction:column;"><div style="background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.06);padding:10px 16px;display:flex;align-items:center;gap:8px;"><div style="width:10px;height:10px;border-radius:50%;background:var(--red);"></div><div style="width:10px;height:10px;border-radius:50%;background:var(--accent);"></div><div style="width:10px;height:10px;border-radius:50%;background:var(--green);"></div><span style="font-size:11px;color:var(--muted);margin-left:8px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(s.file)}</span><span style="font-size:10px;color:${fc};background:${fb};border:1px solid ${fbr};padding:2px 8px;border-radius:20px;font-family:'Syne',sans-serif;font-weight:700;white-space:nowrap;">${s.type.toUpperCase()} · ${s.size}</span></div><div style="padding:20px 24px;"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--text);margin-bottom:3px;">${escHtml(s.task)}</div><div style="font-size:11px;color:var(--muted);margin-bottom:20px;">Submitted by ${escHtml(s.intern)} · ${new Date(s.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>${rows.map((sec,i)=>`<div style="margin-bottom:16px;"><div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${fc};margin-bottom:8px;">${sec}</div>${widths[i].map(w=>`<div style="height:8px;background:rgba(255,255,255,.06);border-radius:4px;width:${w}%;margin-bottom:6px;"></div>`).join('')}</div>`).join('')}<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;"><div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px 14px;"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">Word Count</div><div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);">${Math.floor(Math.random()*3000)+2000}</div></div><div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px 14px;"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">Pages</div><div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);">${Math.floor(Math.random()*10)+10}</div></div><div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px 14px;"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">Format</div><div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:${fc};">${s.type.toUpperCase()}</div></div></div></div><div style="padding:10px 16px;border-top:1px solid rgba(255,255,255,.05);display:flex;gap:8px;justify-content:flex-end;"><button onclick="showToast('&#128229; Downloading ${escHtml(s.file)}...')" style="padding:7px 16px;border-radius:18px;background:var(--accent);border:none;color:#1a1d0f;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;">&#8595; Download</button><button onclick="resetPreview('${id}')" style="padding:7px 16px;border-radius:18px;background:transparent;border:1px solid rgba(255,255,255,.12);color:var(--muted);font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;">&#10005; Close</button></div></div>`;
+  showToast('Document preview loaded');
+}
+
+function resetPreview(id){
+  const s=SUBS.find(x=>x.id===id||x.id===String(id)); if(!s) return;
+  const pdf=s.type==='pdf',fc=pdf?'var(--red)':'var(--teal)',fb=pdf?'rgba(255,107,107,.12)':'rgba(45,212,191,.1)',fbr=pdf?'rgba(255,107,107,.2)':'rgba(45,212,191,.2)';
+  const fi=`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="${fc}" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>${pdf?'<line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>':''}</svg>`;
+  document.getElementById('fpbox-'+id).innerHTML=`<div class="file-preview-placeholder"><div style="width:52px;height:52px;background:${fb};border:1px solid ${fbr};border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto;">${fi}</div><p><strong style="color:var(--text);font-size:14px;">${escHtml(s.file)}</strong><br>${s.type.toUpperCase()} Document · ${s.size}</p><button onclick="viewFile('${id}')" style="padding:9px 22px;border-radius:22px;background:var(--accent);border:none;color:#1a1d0f;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">&#128065; View Document</button></div>`;
+}
+
+/* setStatus: updates in-memory; for live entries also calls API feedback/status endpoint */
+function setStatus(id, status){
+  const s=SUBS.find(x=>x.id===id||x.id===String(id)); if(!s) return;
+  s.status=status;
+
+  // For real DB entries, persist status via feedback endpoint
+  if (s.source === 'live' && s.dbId) {
+    const dbStatus = status === 'approved' ? 'on_time' : (status === 'rejected' ? 'late' : 'on_time');
+    fetch(`${API}/submissions/feedback/${s.dbId}`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ feedback: s.feedback || '(Status updated by mentor)', status: dbStatus })
+    }).catch(()=>{}); // silent fail — at least UI updates
+  }
+
+  renderDetail(selectedIntern);
+  setTimeout(()=>{ toggleCard(id); updateStats(); },60);
+  showToast(status==='approved'?'✓ Submission approved!':'✕ Submission rejected');
+}
+
+function openFeedback(id, taskName){
+  currentFbId=id;
+  const s=SUBS.find(x=>x.id===id||x.id===String(id));
+  document.getElementById('fbModalTitle').textContent='Feedback: '+taskName;
+  document.getElementById('fbModalSub').textContent='Intern: '+(s?s.intern:'');
+  document.getElementById('fbText').value=s?s.feedback:'';
+  currentStarRating=s?s.rating:0;
+  renderStars(currentStarRating);
+  document.getElementById('feedbackModal').classList.add('open');
+}
+
+function closeFeedbackModal(){ document.getElementById('feedbackModal').classList.remove('open'); }
+
+async function submitFeedback(){
+  const s=SUBS.find(x=>x.id===currentFbId||x.id===String(currentFbId)); if(!s) return;
+  const text = document.getElementById('fbText').value.trim();
+  s.feedback = text;
+  s.rating = currentStarRating;
+
+  // For real DB entries, persist feedback via API
+  if (s.source === 'live' && s.dbId) {
+    try {
+      const dbStatus = s.status === 'approved' ? 'on_time' : (s.status === 'rejected' ? 'late' : 'on_time');
+      await fetch(`${API}/submissions/feedback/${s.dbId}`, {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ feedback: text || '(No text)', status: dbStatus })
+      });
+      showToast('✓ Feedback saved to DB!');
+    } catch(e) {
+      showToast('✓ Feedback saved locally (server offline)');
+    }
+  } else {
+    showToast('✓ Feedback saved!');
+  }
+
+  closeFeedbackModal();
+  renderDetail(selectedIntern);
+  setTimeout(()=>toggleCard(currentFbId),60);
+}
+
+function setStar(n){ currentStarRating=n; renderStars(n); }
+function renderStars(n){ document.querySelectorAll('.star').forEach((s,i)=>{ s.textContent=i<n?'⭐':'☆'; s.style.transform=i<n?'scale(1.2)':'scale(1)'; }); }
+
+function updateStats(){
+  const total=SUBS.length,pending=SUBS.filter(s=>s.status==='pending').length,reviewing=SUBS.filter(s=>s.status==='reviewing').length,approved=SUBS.filter(s=>s.status==='approved').length,rejected=SUBS.filter(s=>s.status==='rejected').length;
+  // update pending badge in nav
+  const pCount = pending + reviewing;
+  const navBadge = document.getElementById('pendingNavBadge');
+  if (navBadge) navBadge.textContent = pCount;
+  function anim(id,v){ const el=document.getElementById(id); let c=parseInt(el.textContent)||0; if(c===v) return; const iv=setInterval(()=>{ c+=(v>c?1:-1); el.textContent=c; if(c===v) clearInterval(iv); },30); }
+  anim('stTotal',total); anim('stPending',pending); anim('stReviewing',reviewing); anim('stApproved',approved); anim('stRejected',rejected);
+}
+
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+
+/* ── MESH BG ── */
+const cvs=document.getElementById('meshCanvas'),ctx=cvs.getContext('2d');
+let W,H; function rsz(){ W=cvs.width=innerWidth; H=cvs.height=innerHeight; } rsz(); addEventListener('resize',rsz);
+const pts=[{ax:.65,ay:.25,rx:.3,ry:.2,fx:.00028,fy:.00016,px:0,py:1,r:620,c:'rgba(180,120,20,'},{ax:.2,ay:.65,rx:.22,ry:.28,fx:.00018,fy:.00026,px:2.4,py:0,r:540,c:'rgba(155,100,15,'},{ax:.5,ay:.1,rx:.28,ry:.2,fx:.00022,fy:.00014,px:1,py:2,r:580,c:'rgba(50,65,20,'},{ax:.88,ay:.78,rx:.2,ry:.22,fx:.00013,fy:.00031,px:.5,py:.8,r:500,c:'rgba(44,58,18,'},{ax:.08,ay:.18,rx:.18,ry:.22,fx:.00025,fy:.0002,px:3,py:1.5,r:460,c:'rgba(20,24,12,'},{ax:.55,ay:.88,rx:.24,ry:.18,fx:.00017,fy:.00023,px:1.8,py:2.7,r:490,c:'rgba(28,32,16,'}];
+function mesh(t){ ctx.fillStyle='#0f1209'; ctx.fillRect(0,0,W,H); pts.forEach(p=>{ const x=W*(p.ax+p.rx*Math.sin(p.fx*t+p.px)),y=H*(p.ay+p.ry*Math.cos(p.fy*t+p.py)),g=ctx.createRadialGradient(x,y,0,x,y,p.r); g.addColorStop(0,p.c+'0.28)'); g.addColorStop(.5,p.c+'0.08)'); g.addColorStop(1,p.c+'0)'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }); const v=ctx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,H*.88); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.55)'); ctx.fillStyle=v; ctx.fillRect(0,0,W,H); }
+let t0=null; (function loop(ts){ if(!t0)t0=ts; mesh(ts-t0); requestAnimationFrame(loop); })(0);
+
+const gl=document.getElementById('glow'); addEventListener('mousemove',e=>{ gl.style.left=e.clientX+'px'; gl.style.top=e.clientY+'px'; });
+
+document.querySelectorAll('.card').forEach((c,i)=>{
+  setTimeout(()=>c.classList.add('visible'),100+i*120);
+  c.addEventListener('mousemove',e=>{ const r=c.getBoundingClientRect(),dx=(e.clientX-r.left-r.width/2)/(r.width/2),dy=(e.clientY-r.top-r.height/2)/(r.height/2); c.style.transform=`perspective(900px) rotateY(${dx*3}deg) rotateX(${-dy*3}deg) translateY(-3px) scale(1.005)`; c.style.boxShadow=`${-dx*8}px ${-dy*8}px 24px rgba(217,164,65,.1),0 12px 36px rgba(0,0,0,.4)`; });
+  c.addEventListener('mouseleave',()=>{ c.style.transition='transform .5s cubic-bezier(.34,1.56,.64,1),box-shadow .4s ease'; c.style.transform='perspective(900px) rotateY(0) rotateX(0) translateY(0) scale(1)'; c.style.boxShadow='0 8px 32px rgba(0,0,0,.35)'; setTimeout(()=>c.style.transition='',500); });
+  c.addEventListener('mouseenter',()=>c.style.transition='transform .12s ease,box-shadow .12s ease');
+});
+
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('mousemove',e=>{ const r=item.getBoundingClientRect(); if(!item.classList.contains('active')) item.style.transform=`translateY(${(e.clientY-r.top-r.height/2)*.1}px)`; });
+  item.addEventListener('mouseleave',()=>{ item.style.transition='transform .4s cubic-bezier(.34,1.56,.64,1)'; item.style.transform='translateY(0)'; setTimeout(()=>item.style.transition='',400); });
+});
+
+for(let i=0;i<10;i++){ const p=document.createElement('div'); p.className='particle'; const sz=2+Math.random()*4; Object.assign(p.style,{width:sz+'px',height:sz+'px',left:Math.random()*100+'vw',top:(60+Math.random()*40)+'vh',animationDuration:(9+Math.random()*14)+'s',animationDelay:Math.random()*10+'s'}); document.body.appendChild(p); }
+
+/* ── BOOT: render hardcoded first, then fetch live ── */
+renderInternList();
+setTimeout(updateStats, 200);
+setTimeout(()=>selectIntern('Monisha K'), 400);
+// Auto-fetch live submissions on load
+setTimeout(fetchLiveSubmissions, 800);
+</script>
+</body>
+</html>

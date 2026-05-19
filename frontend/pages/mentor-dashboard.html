@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InternSync — Mentor Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#d9a441; --accent2:#f0c060; --bg:#0f1209;
+  --card-bg:rgba(255,255,255,0.055); --card-border:rgba(255,255,255,0.13);
+  --text:#f0ede4; --muted:rgba(240,237,228,0.45);
+  --teal:#2dd4bf; --red:#ff6b6b; --green:#4ade80;
+  --sidebar-w:240px;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; display:flex; flex-direction:column; }
+#meshCanvas{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+.glow{ position:fixed; width:500px; height:500px; background:radial-gradient(circle,rgba(217,164,65,.14),transparent 70%); border-radius:50%; pointer-events:none; filter:blur(80px); transform:translate(-50%,-50%); z-index:1; transition:left .1s,top .1s; }
+
+.layout{ display:flex; flex:1; position:relative; z-index:5; }
+
+.sidebar{ width:var(--sidebar-w); flex-shrink:0; background:rgba(8,10,4,.7); backdrop-filter:blur(20px); border-right:1px solid rgba(255,255,255,.07); padding:24px 0; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:auto; }
+.sidebar::-webkit-scrollbar{ width:3px; }
+.sidebar::-webkit-scrollbar-thumb{ background:rgba(217,164,65,.15); border-radius:4px; }
+.sidebar-section{ font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(240,237,228,.2); padding:0 20px; margin:18px 0 8px; }
+.sidebar-section:first-child{ margin-top:0; }
+.nav-item{ display:flex; align-items:center; gap:11px; padding:10px 20px; cursor:pointer; color:var(--muted); font-size:13px; font-weight:500; transition:color .2s,background .2s; text-decoration:none; position:relative; }
+.nav-item svg{ width:16px; height:16px; stroke:currentColor; flex-shrink:0; }
+.nav-item:hover{ color:var(--text); background:rgba(255,255,255,.04); }
+.nav-item.active{ color:var(--accent); background:rgba(217,164,65,.08); border-right:2px solid var(--accent); }
+.nav-item.active svg{ stroke:var(--accent); }
+.nav-badge{ margin-left:auto; background:var(--red); color:#fff; font-size:9px; font-family:'Syne',sans-serif; font-weight:700; border-radius:10px; padding:2px 6px; }
+
+main{ flex:1; padding:28px 32px; overflow-y:auto; }
+.section-title{ font-family:'Syne',sans-serif; font-size:13px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+.section-title::after{ content:''; flex:1; height:1px; background:rgba(217,164,65,.18); }
+
+.greeting{ font-family:'Syne',sans-serif; font-size:28px; font-weight:800; line-height:1.1; margin-bottom:4px; }
+.greeting span{ color:var(--accent); }
+.sub{ font-size:13px; color:var(--muted); margin-bottom:28px; }
+
+.stats-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; position:relative; z-index:100; }
+.stat-card{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:16px; padding:18px 20px; backdrop-filter:blur(20px); position:relative; overflow:visible; cursor:default; transition:transform .2s,box-shadow .2s,border-color .2s; }
+.stat-card:hover{ transform:translateY(-3px); box-shadow:0 12px 32px rgba(217,164,65,.15); border-color:rgba(217,164,65,.25); }
+.stat-card::before{ content:''; position:absolute; inset:0; border-radius:16px; background:linear-gradient(135deg,rgba(217,164,65,.05),transparent 60%); pointer-events:none; }
+.stat-card-icon{ width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
+.stat-card-icon svg{ width:18px; height:18px; }
+.si-gold{ background:rgba(217,164,65,.15); border:1px solid rgba(217,164,65,.2); }
+.si-gold svg{ stroke:var(--accent); }
+.si-teal{ background:rgba(45,212,191,.12); border:1px solid rgba(45,212,191,.2); }
+.si-teal svg{ stroke:var(--teal); }
+.si-red{ background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.2); }
+.si-red svg{ stroke:var(--red); }
+.si-green{ background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.2); }
+.si-green svg{ stroke:var(--green); }
+.stat-num{ font-family:'Syne',sans-serif; font-size:32px; font-weight:800; line-height:1; margin-bottom:4px; }
+.stat-lbl{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+
+.stat-tooltip{ position:absolute; top:calc(100% + 10px); left:0; background:#1c2010; border:1px solid rgba(217,164,65,.3); border-radius:14px; padding:12px 14px; z-index:9000; box-shadow:0 16px 40px rgba(0,0,0,.85); opacity:0; pointer-events:none; transform:translateY(8px); transition:opacity .22s,transform .22s; min-width:200px; white-space:nowrap; }
+.stat-card:hover .stat-tooltip{ opacity:1; pointer-events:auto; transform:translateY(0); }
+.tt-title{ font-family:'Syne',sans-serif; font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:9px; }
+.tt-row{ display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:12px; color:var(--text); }
+.tt-row:last-child{ border-bottom:none; padding-bottom:0; }
+.tt-dot{ width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+
+.card{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:18px; padding:24px; backdrop-filter:blur(20px); box-shadow:0 8px 32px rgba(0,0,0,.35); position:relative; overflow:hidden; transition:transform .25s ease,box-shadow .25s ease; transform-style:preserve-3d; opacity:0; transform:translateY(24px); }
+.card.visible{ animation:cardIn .55s cubic-bezier(.22,1,.36,1) forwards; }
+.card::before{ content:''; position:absolute; inset:0; border-radius:18px; background:linear-gradient(135deg,rgba(217,164,65,.04),transparent 60%); pointer-events:none; }
+@keyframes cardIn{ from{opacity:0;transform:translateY(24px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.card-title{ font-family:'Syne',sans-serif; font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; }
+.card-title-badge{ background:rgba(217,164,65,.1); border:1px solid rgba(217,164,65,.2); color:var(--accent); font-size:10px; font-family:'Syne',sans-serif; font-weight:700; padding:2px 10px; border-radius:20px; }
+
+.grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
+.full{ grid-column:1/-1; }
+
+.av-circle{
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-family:'Syne',sans-serif; font-weight:700; flex-shrink:0;
+  overflow:hidden; padding:0;
+}
+.av-circle img{
+  width:100%; height:100%;
+  object-fit:cover; object-position:center top;
+  display:block; border-radius:50%;
+}
+
+/* Submission items — no action buttons */
+.sub-item{ display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+.sub-item:last-child{ border-bottom:none; padding-bottom:0; }
+.sub-avatar{ width:34px; height:34px; font-size:13px; }
+.sub-info{ flex:1; min-width:0; }
+.sub-task{ font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sub-intern{ font-size:11px; color:var(--muted); margin-top:1px; }
+.sub-time{ font-size:10px; color:var(--muted); opacity:.6; }
+.sub-status-pill{ font-family:'Syne',sans-serif; font-size:9px; font-weight:700; padding:3px 9px; border-radius:20px; letter-spacing:.04em; flex-shrink:0; }
+.pill-pending  { background:rgba(240,237,228,.07); border:1px solid rgba(240,237,228,.15); color:var(--muted); }
+.pill-reviewing{ background:rgba(217,164,65,.1);  border:1px solid rgba(217,164,65,.25);  color:var(--accent); }
+
+.btn-sm{ padding:5px 12px; border-radius:20px; font-size:11px; font-weight:700; font-family:'Syne',sans-serif; cursor:pointer; letter-spacing:.04em; transition:all .2s; border:1px solid; }
+.btn-approve{ background:rgba(74,222,128,.1); border-color:rgba(74,222,128,.25); color:var(--green); }
+.btn-approve:hover{ background:rgba(74,222,128,.2); }
+.btn-reject{ background:rgba(255,107,107,.1); border-color:rgba(255,107,107,.25); color:var(--red); }
+.btn-reject:hover{ background:rgba(255,107,107,.2); }
+.btn-review{ background:rgba(217,164,65,.1); border-color:rgba(217,164,65,.25); color:var(--accent); }
+.btn-review:hover{ background:rgba(217,164,65,.22); }
+
+.leave-item{ display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+.leave-item:last-child{ border-bottom:none; padding-bottom:0; }
+.leave-avatar{ width:36px; height:36px; font-size:13px; }
+.leave-info{ flex:1; }
+.leave-name{ font-size:13px; font-weight:600; color:var(--text); }
+.leave-date{ font-size:11px; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:5px; }
+.leave-date svg{ width:11px; height:11px; stroke:var(--muted); }
+.leave-reason{ font-size:11px; color:var(--muted); margin-top:3px; font-style:italic; }
+.leave-type{ font-size:10px; font-family:'Syne',sans-serif; font-weight:700; letter-spacing:.06em; padding:2px 9px; border-radius:20px; margin-top:4px; display:inline-block; }
+.lt-sick{ background:rgba(255,107,107,.1); border:1px solid rgba(255,107,107,.2); color:var(--red); }
+.lt-personal{ background:rgba(217,164,65,.1); border:1px solid rgba(217,164,65,.2); color:var(--accent); }
+.lt-family{ background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.2); color:var(--green); }
+.leave-btns{ display:flex; gap:6px; flex-shrink:0; }
+
+.announce-input{ width:100%; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:10px 14px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; resize:none; outline:none; height:70px; }
+.announce-input:focus{ border-color:rgba(217,164,65,.4); }
+.btn-post{ padding:8px 20px; border-radius:20px; background:rgba(217,164,65,.12); border:1px solid rgba(217,164,65,.3); color:var(--accent); font-family:'Syne',sans-serif; font-size:11px; font-weight:700; cursor:pointer; letter-spacing:.06em; transition:all .2s; margin-top:8px; float:right; }
+.btn-post:hover{ background:rgba(217,164,65,.22); }
+
+.intern-row{ display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.04); }
+.intern-row:last-child{ border-bottom:none; }
+.intern-av{ width:30px; height:30px; font-size:11px; }
+.intern-name-col{ flex:1; min-width:0; }
+.intern-nm{ font-size:12px; font-weight:600; color:var(--text); }
+.intern-role{ font-size:10px; color:var(--muted); }
+.intern-bar-wrap{ width:90px; }
+.intern-bar{ height:5px; background:rgba(255,255,255,.07); border-radius:4px; overflow:hidden; }
+.intern-bar-fill{ height:100%; border-radius:4px; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width 1.2s cubic-bezier(.4,0,.2,1); }
+.intern-pct{ font-family:'Syne',sans-serif; font-size:11px; font-weight:700; color:var(--accent); width:32px; text-align:right; }
+.intern-status{ width:60px; text-align:center; }
+.ist-dot{ width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:4px; }
+
+.profile-modal-overlay{ position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,.7); backdrop-filter:blur(12px); display:none; justify-content:center; align-items:center; padding:20px; }
+.profile-modal-overlay.open{ display:flex; }
+.profile-modal-box{ background:#141810; border:1px solid rgba(217,164,65,.25); border-radius:20px; padding:28px; width:520px; max-width:100%; max-height:88vh; overflow-y:auto; box-shadow:0 32px 80px rgba(0,0,0,.85); animation:modalIn .3s cubic-bezier(.22,1,.36,1); position:relative; }
+.profile-modal-box::-webkit-scrollbar{ width:3px; }
+.profile-modal-box::-webkit-scrollbar-thumb{ background:rgba(217,164,65,.2); border-radius:4px; }
+@keyframes modalIn{ from{opacity:0;transform:translateY(16px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+.toast{ position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); background:rgba(18,22,10,.97); border:1px solid rgba(217,164,65,.35); color:#fff; padding:11px 22px; border-radius:30px; font-size:13px; opacity:0; pointer-events:none; transition:opacity .3s,transform .3s; z-index:9999; white-space:nowrap; }
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+.particle{ position:fixed; border-radius:50%; background:rgba(217,164,65,.12); pointer-events:none; z-index:2; animation:floatUp linear infinite; }
+@keyframes floatUp{ 0%{transform:translateY(0) scale(1);opacity:.4} 50%{transform:translateY(-70px) scale(1.1);opacity:.15} 100%{transform:translateY(-140px) scale(.8);opacity:0} }
+</style>
+</head>
+<body>
+
+<canvas id="meshCanvas"></canvas>
+<div class="glow" id="glow"></div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">Overview</div>
+    <a class="nav-item active" href="mentor-dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" href="mentor-profile.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      My Profile
+    </a>
+    <a class="nav-item" href="mentor-interns.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      My Interns
+    </a>
+    <a class="nav-item" href="mentor-attendance.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 16 11 18 15 14"/></svg>
+      Attendance
+    </a>
+    <div class="sidebar-section">Tasks</div>
+    <a class="nav-item" href="mentor-assign.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Assign Tasks <span class="nav-badge">3</span>
+    </a>
+    <a class="nav-item" href="mentor-submissions.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Submissions <span class="nav-badge">7</span>
+    </a>
+    <a class="nav-item" href="mentor-feedback.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Give Feedback
+    </a>
+    <div class="sidebar-section">Manage</div>
+    <a class="nav-item" href="mentor-leave.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      Leave Requests <span class="nav-badge">2</span>
+    </a>
+    <a class="nav-item" href="mentor-content.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+      Manage Content
+    </a>
+    <a class="nav-item" href="mentor-certificate.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+      Certificates
+    </a>
+    <div class="sidebar-section">Communication</div>
+    <a class="nav-item" href="mentor-pvtchat.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>
+      Chat with Interns
+    </a>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <div class="greeting">Good morning, <span>Raj</span></div>
+    <!-- Updated: 7 pending reviews (matching submissions page), 2 leave requests -->
+    <div class="sub">You have 7 pending submission reviews and 2 leave requests awaiting your action today.</div>
+
+    <!-- STAT CARDS -->
+    <div class="stats-row">
+      <div class="stat-card" id="s1">
+        <div class="stat-card-icon si-gold">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <div class="stat-num" style="color:var(--accent)" id="internCount">0</div>
+        <div class="stat-lbl">Total Interns</div>
+        <div class="stat-tooltip">
+          <div class="tt-title">Interns Assigned</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--accent)"></span>Monisha K · Full Stack</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--teal)"></span>Fiona Shalet · Frontend</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--red)"></span>Stella Mary · Backend</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--green)"></span>Bhavana R · Full Stack</div>
+          <div class="tt-row"><span class="tt-dot" style="background:#c084fc"></span>Deekshitha S · UI/UX</div>
+          <div class="tt-row"><span class="tt-dot" style="background:#fbbf24"></span>+ 5 more interns</div>
+        </div>
+      </div>
+      <div class="stat-card" id="s2">
+        <div class="stat-card-icon si-red">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <!-- Updated: 7 pending reviews -->
+        <div class="stat-num" style="color:var(--red)" id="pendingCount">0</div>
+        <div class="stat-lbl">Pending Reviews</div>
+        <div class="stat-tooltip">
+          <div class="tt-title">Pending Submissions</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--red)"></span>Database Optimisation · Monisha K</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--red)"></span>React Component Library · Fiona Shalet</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--red)"></span>REST API Documentation · Stella Mary</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--red)"></span>Figma Prototype Design · Bhavana R</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--red)"></span>Vue.js Dashboard · Shonn Dias</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--red)"></span>TypeScript Components · Bhoomika Ravi</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--red)"></span>GraphQL Integration · Vinay Kumar</div>
+        </div>
+      </div>
+      <div class="stat-card" id="s3">
+        <div class="stat-card-icon si-teal">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        </div>
+        <div class="stat-num" style="color:var(--teal)" id="approvedCount">0</div>
+        <div class="stat-lbl">Tasks Approved</div>
+        <div class="stat-tooltip">
+          <div class="tt-title">Recent Approvals</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--teal)"></span>Auth Flow Setup · Monisha K</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--teal)"></span>Responsive Dashboard UI · Fiona Shalet</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--teal)"></span>MySQL Schema Design · Arun Prasad</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--teal)"></span>Python Backend Script · Deekshitha S</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--teal)"></span>+ 3 more approved tasks</div>
+        </div>
+      </div>
+      <div class="stat-card" id="s4">
+        <div class="stat-card-icon si-green">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="stat-num" style="color:var(--green)" id="leaveCount">0</div>
+        <div class="stat-lbl">Leave Requests</div>
+        <div class="stat-tooltip">
+          <div class="tt-title">Pending Leave</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--green)"></span>Monisha K · Apr 22–30 · Family Leave</div>
+          <div class="tt-row"><span class="tt-dot" style="background:var(--accent)"></span>Deekshitha S · Apr 21–23 · Personal</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Dashboard Overview</div>
+
+    <div class="grid-2">
+
+      <!-- PENDING SUBMISSIONS — only pending/reviewing from submissions page, no Review buttons -->
+      <div class="card" id="c1">
+        <!-- Updated badge: 7 pending -->
+        <div class="card-title">Pending Submissions <span class="card-title-badge">7 pending</span></div>
+
+        <!-- 1. Monisha K — pending -->
+        <div class="sub-item">
+          <div class="av-circle sub-avatar" id="av-sub-monisha" style="background:linear-gradient(135deg,rgba(217,164,65,.3),rgba(217,164,65,.1));color:var(--accent)">MK</div>
+          <div class="sub-info">
+            <div class="sub-task">Database Optimisation</div>
+            <div class="sub-intern">Monisha K · Full Stack Intern</div>
+            <div class="sub-time">Submitted 2 hrs ago</div>
+          </div>
+          <span class="sub-status-pill pill-pending">Pending</span>
+        </div>
+
+        <!-- 2. Fiona Shalet — reviewing -->
+        <div class="sub-item">
+          <div class="av-circle sub-avatar" id="av-sub-fiona" style="background:linear-gradient(135deg,rgba(45,212,191,.3),rgba(45,212,191,.1));color:var(--teal)">FS</div>
+          <div class="sub-info">
+            <div class="sub-task">React Component Library</div>
+            <div class="sub-intern">Fiona Shalet · Frontend Intern</div>
+            <div class="sub-time">Submitted 5 hrs ago</div>
+          </div>
+          <span class="sub-status-pill pill-reviewing">Reviewing</span>
+        </div>
+
+        <!-- 3. Stella Mary — pending -->
+        <div class="sub-item">
+          <div class="av-circle sub-avatar" id="av-sub-stella" style="background:linear-gradient(135deg,rgba(255,107,107,.3),rgba(255,107,107,.1));color:var(--red)">SM</div>
+          <div class="sub-info">
+            <div class="sub-task">REST API Documentation</div>
+            <div class="sub-intern">Stella Mary · Backend Intern</div>
+            <div class="sub-time">Submitted yesterday</div>
+          </div>
+          <span class="sub-status-pill pill-pending">Pending</span>
+        </div>
+
+        <!-- 4. Bhavana R — reviewing -->
+        <div class="sub-item">
+          <div class="av-circle sub-avatar" id="av-sub-bhavana" style="background:linear-gradient(135deg,rgba(74,222,128,.3),rgba(74,222,128,.1));color:var(--green)">BR</div>
+          <div class="sub-info">
+            <div class="sub-task">Figma Prototype Design</div>
+            <div class="sub-intern">Bhavana R · Full Stack Intern</div>
+            <div class="sub-time">Submitted 2 days ago</div>
+          </div>
+          <span class="sub-status-pill pill-reviewing">Reviewing</span>
+        </div>
+
+        <!-- 5. Shonn Dias — pending -->
+        <div class="sub-item">
+          <div class="av-circle sub-avatar" id="av-sub-shonn" style="background:linear-gradient(135deg,rgba(56,189,248,.3),rgba(56,189,248,.1));color:#38bdf8">SD</div>
+          <div class="sub-info">
+            <div class="sub-task">Vue.js Dashboard</div>
+            <div class="sub-intern">Shonn Dias · Full Stack Intern</div>
+            <div class="sub-time">Submitted 2 days ago</div>
+          </div>
+          <span class="sub-status-pill pill-pending">Pending</span>
+        </div>
+
+        <!-- 6. Bhoomika Ravi — pending -->
+        <div class="sub-item">
+          <div class="av-circle sub-avatar" id="av-sub-bhoomika" style="background:linear-gradient(135deg,rgba(251,113,133,.3),rgba(251,113,133,.1));color:#fb7185">BV</div>
+          <div class="sub-info">
+            <div class="sub-task">TypeScript Components</div>
+            <div class="sub-intern">Bhoomika Ravi · Frontend Intern</div>
+            <div class="sub-time">Submitted 3 days ago</div>
+          </div>
+          <span class="sub-status-pill pill-pending">Pending</span>
+        </div>
+
+        <!-- 7. Vinay Kumar — reviewing -->
+        <div class="sub-item">
+          <div class="av-circle sub-avatar" id="av-sub-vinay" style="background:linear-gradient(135deg,rgba(45,212,191,.3),rgba(45,212,191,.1));color:var(--teal)">VK</div>
+          <div class="sub-info">
+            <div class="sub-task">GraphQL Integration</div>
+            <div class="sub-intern">Vinay Kumar · Full Stack Intern</div>
+            <div class="sub-time">Submitted 3 days ago</div>
+          </div>
+          <span class="sub-status-pill pill-reviewing">Reviewing</span>
+        </div>
+
+      </div>
+
+      <!-- LEAVE REQUESTS -->
+      <div class="card" id="c2">
+        <div class="card-title">Leave Requests <span class="card-title-badge">2 pending</span></div>
+
+        <div class="leave-item" id="leave-monisha">
+          <div class="av-circle leave-avatar" id="av-lv-monisha" style="background:linear-gradient(135deg,rgba(217,164,65,.3),rgba(217,164,65,.1));color:var(--accent)">MK</div>
+          <div class="leave-info">
+            <div class="leave-name">Monisha K</div>
+            <div class="leave-date">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              22 Apr 2026 – 30 Apr 2026 · 9 days
+            </div>
+            <div class="leave-reason">"Brother's wedding"</div>
+            <span class="leave-type lt-family">Family Leave</span>
+          </div>
+          <div class="leave-btns">
+            <button class="btn-sm btn-approve" onclick="handleLeave('leave-monisha','approve','Monisha K')">✓</button>
+            <button class="btn-sm btn-reject"  onclick="handleLeave('leave-monisha','reject','Monisha K')">✕</button>
+          </div>
+        </div>
+
+        <div class="leave-item" id="leave-deekshitha">
+          <div class="av-circle leave-avatar" id="av-lv-deekshitha" style="background:linear-gradient(135deg,rgba(192,132,252,.3),rgba(192,132,252,.1));color:#c084fc">DS</div>
+          <div class="leave-info">
+            <div class="leave-name">Deekshitha S</div>
+            <div class="leave-date">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              21 Apr 2026 – 23 Apr 2026 · 3 days
+            </div>
+            <div class="leave-reason">"Grandmother passed away. Need to travel to hometown for the funeral."</div>
+            <span class="leave-type lt-personal">Personal Leave</span>
+          </div>
+          <div class="leave-btns">
+            <button class="btn-sm btn-approve" onclick="handleLeave('leave-deekshitha','approve','Deekshitha S')">✓</button>
+            <button class="btn-sm btn-reject"  onclick="handleLeave('leave-deekshitha','reject','Deekshitha S')">✕</button>
+          </div>
+        </div>
+
+        <div style="margin:16px 0 14px;height:1px;background:rgba(255,255,255,.05)"></div>
+        <div class="card-title" style="margin-bottom:10px;">Post Announcement</div>
+        <textarea class="announce-input" placeholder="Write an announcement to all interns…" id="announceText"></textarea>
+        <button class="btn-post" onclick="postAnnouncement()">📣 Post</button>
+        <div style="clear:both"></div>
+      </div>
+    </div>
+
+    <!-- INTERN PROGRESS -->
+    <div class="grid-2">
+      <div class="card full" id="c4" style="grid-column:1/-1">
+        <div class="card-title">Intern Progress Overview <span class="card-title-badge">10 active</span></div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0 32px">
+
+          <div class="intern-row">
+            <div class="av-circle intern-av" id="av-pr-monisha" style="background:linear-gradient(135deg,rgba(217,164,65,.3),rgba(217,164,65,.1));color:var(--accent)">MK</div>
+            <div class="intern-name-col"><div class="intern-nm">Monisha K</div><div class="intern-role">Full Stack</div></div>
+            <div class="intern-bar-wrap"><div class="intern-bar"><div class="intern-bar-fill" style="width:80%"></div></div></div>
+            <div class="intern-pct">80%</div>
+            <div class="intern-status"><span class="ist-dot" style="background:var(--teal)"></span><span style="font-size:10px;color:var(--teal)">Active</span></div>
+            <button class="btn-sm btn-review" style="margin-left:8px;font-size:10px;padding:4px 10px;" onclick="openProfile('Monisha K')">View</button>
+          </div>
+
+          <div class="intern-row">
+            <div class="av-circle intern-av" id="av-pr-fiona" style="background:linear-gradient(135deg,rgba(45,212,191,.3),rgba(45,212,191,.1));color:var(--teal)">FS</div>
+            <div class="intern-name-col"><div class="intern-nm">Fiona Shalet</div><div class="intern-role">Frontend</div></div>
+            <div class="intern-bar-wrap"><div class="intern-bar"><div class="intern-bar-fill" style="width:78%"></div></div></div>
+            <div class="intern-pct">78%</div>
+            <div class="intern-status"><span class="ist-dot" style="background:var(--teal)"></span><span style="font-size:10px;color:var(--teal)">Active</span></div>
+            <button class="btn-sm btn-review" style="margin-left:8px;font-size:10px;padding:4px 10px;" onclick="openProfile('Fiona Shalet')">View</button>
+          </div>
+
+          <div class="intern-row">
+            <div class="av-circle intern-av" id="av-pr-stella" style="background:linear-gradient(135deg,rgba(255,107,107,.3),rgba(255,107,107,.1));color:var(--red)">SM</div>
+            <div class="intern-name-col"><div class="intern-nm">Stella Mary</div><div class="intern-role">Backend</div></div>
+            <div class="intern-bar-wrap"><div class="intern-bar"><div class="intern-bar-fill" style="width:45%"></div></div></div>
+            <div class="intern-pct">45%</div>
+            <div class="intern-status"><span class="ist-dot" style="background:var(--accent)"></span><span style="font-size:10px;color:var(--accent)">Behind</span></div>
+            <button class="btn-sm btn-review" style="margin-left:8px;font-size:10px;padding:4px 10px;" onclick="openProfile('Stella Mary')">View</button>
+          </div>
+
+          <div class="intern-row">
+            <div class="av-circle intern-av" id="av-pr-bhavana" style="background:linear-gradient(135deg,rgba(74,222,128,.3),rgba(74,222,128,.1));color:var(--green)">BR</div>
+            <div class="intern-name-col"><div class="intern-nm">Bhavana R</div><div class="intern-role">Full Stack</div></div>
+            <div class="intern-bar-wrap"><div class="intern-bar"><div class="intern-bar-fill" style="width:85%"></div></div></div>
+            <div class="intern-pct">85%</div>
+            <div class="intern-status"><span class="ist-dot" style="background:var(--teal)"></span><span style="font-size:10px;color:var(--teal)">Active</span></div>
+            <button class="btn-sm btn-review" style="margin-left:8px;font-size:10px;padding:4px 10px;" onclick="openProfile('Bhavana R')">View</button>
+          </div>
+
+          <div class="intern-row">
+            <div class="av-circle intern-av" id="av-pr-deekshitha" style="background:linear-gradient(135deg,rgba(192,132,252,.3),rgba(192,132,252,.1));color:#c084fc">DS</div>
+            <div class="intern-name-col"><div class="intern-nm">Deekshitha S</div><div class="intern-role">UI/UX</div></div>
+            <div class="intern-bar-wrap"><div class="intern-bar"><div class="intern-bar-fill" style="width:55%"></div></div></div>
+            <div class="intern-pct">55%</div>
+            <div class="intern-status"><span class="ist-dot" style="background:var(--teal)"></span><span style="font-size:10px;color:var(--teal)">Active</span></div>
+            <button class="btn-sm btn-review" style="margin-left:8px;font-size:10px;padding:4px 10px;" onclick="openProfile('Deekshitha S')">View</button>
+          </div>
+
+          <div class="intern-row">
+            <div class="av-circle intern-av" id="av-pr-arun" style="background:linear-gradient(135deg,rgba(251,191,36,.3),rgba(251,191,36,.1));color:#fbbf24">AP</div>
+            <div class="intern-name-col"><div class="intern-nm">Arun Prasad</div><div class="intern-role">Backend</div></div>
+            <div class="intern-bar-wrap"><div class="intern-bar"><div class="intern-bar-fill" style="width:70%"></div></div></div>
+            <div class="intern-pct">70%</div>
+            <div class="intern-status"><span class="ist-dot" style="background:var(--teal)"></span><span style="font-size:10px;color:var(--teal)">Active</span></div>
+            <button class="btn-sm btn-review" style="margin-left:8px;font-size:10px;padding:4px 10px;" onclick="openProfile('Arun Prasad')">View</button>
+          </div>
+
+          <div class="intern-row">
+            <div class="av-circle intern-av" id="av-pr-shonn" style="background:linear-gradient(135deg,rgba(56,189,248,.3),rgba(56,189,248,.1));color:#38bdf8">SD</div>
+            <div class="intern-name-col"><div class="intern-nm">Shonn Dias</div><div class="intern-role">Full Stack</div></div>
+            <div class="intern-bar-wrap"><div class="intern-bar"><div class="intern-bar-fill" style="width:38%"></div></div></div>
+            <div class="intern-pct">38%</div>
+            <div class="intern-status"><span class="ist-dot" style="background:var(--red)"></span><span style="font-size:10px;color:var(--red)">At Risk</span></div>
+            <button class="btn-sm btn-review" style="margin-left:8px;font-size:10px;padding:4px 10px;" onclick="openProfile('Shonn Dias')">View</button>
+          </div>
+
+          <div class="intern-row">
+            <div class="av-circle intern-av" id="av-pr-bhoomika" style="background:linear-gradient(135deg,rgba(251,113,133,.3),rgba(251,113,133,.1));color:#fb7185">BV</div>
+            <div class="intern-name-col"><div class="intern-nm">Bhoomika Ravi</div><div class="intern-role">Frontend</div></div>
+            <div class="intern-bar-wrap"><div class="intern-bar"><div class="intern-bar-fill" style="width:91%"></div></div></div>
+            <div class="intern-pct">91%</div>
+            <div class="intern-status"><span class="ist-dot" style="background:var(--teal)"></span><span style="font-size:10px;color:var(--teal)">Active</span></div>
+            <button class="btn-sm btn-review" style="margin-left:8px;font-size:10px;padding:4px 10px;" onclick="openProfile('Bhoomika Ravi')">View</button>
+          </div>
+
+          <div class="intern-row">
+            <div class="av-circle intern-av" id="av-pr-hrithika" style="background:linear-gradient(135deg,rgba(99,102,241,.3),rgba(99,102,241,.1));color:#818cf8">HG</div>
+            <div class="intern-name-col"><div class="intern-nm">Hrithika Gowda</div><div class="intern-role">Backend</div></div>
+            <div class="intern-bar-wrap"><div class="intern-bar"><div class="intern-bar-fill" style="width:50%"></div></div></div>
+            <div class="intern-pct">50%</div>
+            <div class="intern-status"><span class="ist-dot" style="background:var(--accent)"></span><span style="font-size:10px;color:var(--accent)">Behind</span></div>
+            <button class="btn-sm btn-review" style="margin-left:8px;font-size:10px;padding:4px 10px;" onclick="openProfile('Hrithika Gowda')">View</button>
+          </div>
+
+          <div class="intern-row">
+            <div class="av-circle intern-av" id="av-pr-vinay" style="background:linear-gradient(135deg,rgba(45,212,191,.3),rgba(45,212,191,.1));color:var(--teal)">VK</div>
+            <div class="intern-name-col"><div class="intern-nm">Vinay Kumar</div><div class="intern-role">Full Stack</div></div>
+            <div class="intern-bar-wrap"><div class="intern-bar"><div class="intern-bar-fill" style="width:74%"></div></div></div>
+            <div class="intern-pct">74%</div>
+            <div class="intern-status"><span class="ist-dot" style="background:var(--teal)"></span><span style="font-size:10px;color:var(--teal)">Active</span></div>
+            <button class="btn-sm btn-review" style="margin-left:8px;font-size:10px;padding:4px 10px;" onclick="openProfile('Vinay Kumar')">View</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- INTERN PROFILE MODAL -->
+<div class="profile-modal-overlay" id="profileModal">
+  <div class="profile-modal-box">
+    <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;">
+      <div id="pAvatar" style="width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:22px;flex-shrink:0;overflow:hidden;padding:0;"></div>
+      <div style="flex:1">
+        <div id="pName" style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);margin-bottom:3px;"></div>
+        <div id="pRole" style="font-size:12px;color:var(--muted);margin-bottom:8px;"></div>
+        <div id="pStatusBadge"></div>
+      </div>
+      <button onclick="closeProfile()" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:var(--muted);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;" onmouseover="this.style.background='rgba(255,107,107,.15)';this.style.color='#ff6b6b'" onmouseout="this.style.background='rgba(255,255,255,.07)';this.style.color='var(--muted)'">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px;"><div style="font-size:9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;">Duration</div><div id="pDuration" style="font-size:13px;font-weight:600;color:var(--text);"></div></div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px;"><div style="font-size:9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;">Mentor</div><div style="font-size:13px;font-weight:600;color:var(--text);">Raj Shamani</div></div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px;"><div style="font-size:9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;">Location</div><div style="font-size:13px;font-weight:600;color:var(--text);">Bengaluru, Karnataka</div></div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px;"><div style="font-size:9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;">Program</div><div style="font-size:13px;font-weight:600;color:var(--text);">IBM SkillsBuild</div></div>
+    </div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);">Internship Progress</span><span id="pPct" style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--accent);"></span></div>
+      <div style="height:8px;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden;"><div id="pBar" style="height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .9s cubic-bezier(.4,0,.2,1);width:0%;"></div></div>
+    </div>
+    <div style="background:linear-gradient(135deg,rgba(217,164,65,.1),rgba(217,164,65,.03));border:1px solid rgba(217,164,65,.2);border-radius:10px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">Resume / CV</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+        <div style="flex:1">
+          <div id="pResumeName" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;"></div>
+          <div id="pResumeSize" style="font-size:11px;color:var(--muted);">PDF · Uploaded on joining</div>
+        </div>
+        <button id="pResumeBtn" onclick="downloadResume()" style="padding:6px 14px;border-radius:20px;background:rgba(217,164,65,.1);border:1px solid rgba(217,164,65,.25);color:var(--accent);font-family:'Syne',sans-serif;font-size:10px;font-weight:700;cursor:pointer;">↗ View</button>
+      </div>
+    </div>
+    <div style="margin-bottom:20px;">
+      <div style="font-size:9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Skills</div>
+      <div id="pSkills" style="display:flex;flex-wrap:wrap;gap:7px;"></div>
+    </div>
+    <button onclick="closeProfile()" style="width:100%;padding:11px;border-radius:24px;background:transparent;border:1.5px solid rgba(217,164,65,.4);color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer;" onmouseover="this.style.background='rgba(217,164,65,.1)'" onmouseout="this.style.background='transparent'">Close</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const photoMap = {
+  'Monisha K':     '../images/monisha.jpeg',
+  'Fiona Shalet':  '../images/fiona.jpeg',
+  'Stella Mary':   '../images/stella.jpeg',
+  'Bhavana R':     '../images/bhavana.jpeg',
+  'Deekshitha S':  '../images/deekshitha.jpeg',
+  'Arun Prasad':   '../images/arun.jpeg',
+  'Shonn Dias':    '../images/shonn.jpeg',
+  'Bhoomika Ravi': '../images/bhoomika.jpeg',
+  'Hrithika Gowda':'../images/hrithika.jpeg',
+  'Vinay Kumar':   '../images/vinay.jpeg'
+};
+
+/* ── RESUME MAP ──*/
+const resumeMap = {
+'Monisha K':      'resumes/Monisha_K_Resume.html',
+  'Fiona Shalet':   'resumes/Fiona_Shalet_Resume.html',
+  'Stella Mary':    'resumes/Stella_Mary_Resume.html',
+  'Bhavana R':      'resumes/Bhavana_R_Resume.html',
+  'Deekshitha S':   'resumes/Deekshitha_S_Resume.html',
+  'Arun Prasad':    'resumes/Arun_Prasad_Resume.html',
+  'Shonn Dias':     'resumes/Shonn_Dias_Resume.html',
+  'Bhoomika Ravi':  'resumes/Bhoomika_Ravi_Resume.html',
+  'Hrithika Gowda': 'resumes/Hrithika_Gowda_Resume.html',
+  'Vinay Kumar':    'resumes/Vinay_Kumar_Resume.html',
+};
+
+const internData = {
+  'Monisha K':     { role:'Full Stack Intern', pct:80, status:'active', color:'#d9a441', bg:'rgba(217,164,65' },
+  'Fiona Shalet':  { role:'Frontend Intern',   pct:78, status:'active', color:'#2dd4bf', bg:'rgba(45,212,191' },
+  'Stella Mary':   { role:'Backend Intern',    pct:45, status:'behind', color:'#ff6b6b', bg:'rgba(255,107,107' },
+  'Bhavana R':     { role:'Full Stack Intern', pct:85, status:'active', color:'#4ade80', bg:'rgba(74,222,128' },
+  'Deekshitha S':  { role:'UI/UX Intern',      pct:55, status:'active', color:'#c084fc', bg:'rgba(192,132,252' },
+  'Arun Prasad':   { role:'Backend Intern',    pct:70, status:'active', color:'#fbbf24', bg:'rgba(251,191,36' },
+  'Shonn Dias':    { role:'Full Stack Intern', pct:38, status:'risk',   color:'#38bdf8', bg:'rgba(56,189,248' },
+  'Bhoomika Ravi': { role:'Frontend Intern',   pct:91, status:'active', color:'#fb7185', bg:'rgba(251,113,133' },
+  'Hrithika Gowda':{ role:'Backend Intern',    pct:50, status:'behind', color:'#818cf8', bg:'rgba(99,102,241' },
+  'Vinay Kumar':   { role:'Full Stack Intern', pct:74, status:'active', color:'#2dd4bf', bg:'rgba(20,184,166' }
+};
+
+const skillMap = {
+  'Monisha K':     ['HTML','CSS','JavaScript','React','Node.js','MySQL'],
+  'Fiona Shalet':  ['HTML','CSS','Tailwind','React','Figma','TypeScript'],
+  'Stella Mary':   ['Node.js','Express','PHP','MySQL','REST APIs','JWT'],
+  'Bhavana R':     ['HTML','CSS','JavaScript','React','MongoDB','Python'],
+  'Deekshitha S':  ['Figma','Adobe XD','HTML','CSS','Prototyping','UX Research'],
+  'Arun Prasad':   ['PHP','MySQL','Python','Django','REST APIs','Redis'],
+  'Shonn Dias':    ['JavaScript','Vue.js','Node.js','PostgreSQL','Docker'],
+  'Bhoomika Ravi': ['React','TypeScript','CSS','Sass','Jest','Webpack'],
+  'Hrithika Gowda':['Java','Spring Boot','MySQL','AWS','REST APIs'],
+  'Vinay Kumar':   ['HTML','CSS','React','Node.js','GraphQL','MongoDB']
+};
+
+const avatarIdMap = {
+  'Monisha K':     ['av-sub-monisha', 'av-lv-monisha', 'av-pr-monisha'],
+  'Fiona Shalet':  ['av-sub-fiona',   'av-pr-fiona'],
+  'Stella Mary':   ['av-sub-stella',  'av-pr-stella'],
+  'Bhavana R':     ['av-sub-bhavana', 'av-pr-bhavana'],
+  'Deekshitha S':  ['av-lv-deekshitha', 'av-pr-deekshitha'],
+  'Arun Prasad':   ['av-pr-arun'],
+  'Shonn Dias':    ['av-sub-shonn',   'av-pr-shonn'],
+  'Bhoomika Ravi': ['av-sub-bhoomika','av-pr-bhoomika'],
+  'Hrithika Gowda':['av-pr-hrithika'],
+  'Vinay Kumar':   ['av-sub-vinay',   'av-pr-vinay']
+};
+
+function applyAvatarPhotos() {
+  Object.keys(photoMap).forEach(function(name) {
+    var url = photoMap[name];
+    if (!url) return;
+    (avatarIdMap[name] || []).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.innerHTML = '<img src="' + url + '" alt="' + name + '" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;border-radius:50%;" />';
+    });
+  });
+}
+
+/* MESH BACKGROUND */
+const cvs = document.getElementById('meshCanvas'), ctx = cvs.getContext('2d');
+let W, H;
+function rsz() { W = cvs.width = innerWidth; H = cvs.height = innerHeight; }
+rsz(); addEventListener('resize', rsz);
+const pts = [
+  {ax:.65,ay:.25,rx:.3, ry:.2, fx:.00028,fy:.00016,px:0,  py:1,  r:620,c:'rgba(180,120,20,'},
+  {ax:.2, ay:.65,rx:.22,ry:.28,fx:.00018,fy:.00026,px:2.4,py:0,  r:540,c:'rgba(155,100,15,'},
+  {ax:.5, ay:.1, rx:.28,ry:.2, fx:.00022,fy:.00014,px:1,  py:2,  r:580,c:'rgba(50,65,20,'},
+  {ax:.88,ay:.78,rx:.2, ry:.22,fx:.00013,fy:.00031,px:.5, py:.8, r:500,c:'rgba(44,58,18,'},
+  {ax:.08,ay:.18,rx:.18,ry:.22,fx:.00025,fy:.0002, px:3,  py:1.5,r:460,c:'rgba(20,24,12,'},
+  {ax:.55,ay:.88,rx:.24,ry:.18,fx:.00017,fy:.00023,px:1.8,py:2.7,r:490,c:'rgba(28,32,16,'}
+];
+function mesh(t) {
+  ctx.fillStyle = '#0f1209'; ctx.fillRect(0, 0, W, H);
+  pts.forEach(p => {
+    const x = W * (p.ax + p.rx * Math.sin(p.fx * t + p.px));
+    const y = H * (p.ay + p.ry * Math.cos(p.fy * t + p.py));
+    const g = ctx.createRadialGradient(x, y, 0, x, y, p.r);
+    g.addColorStop(0, p.c + '0.3)'); g.addColorStop(.5, p.c + '0.08)'); g.addColorStop(1, p.c + '0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  });
+  const v = ctx.createRadialGradient(W/2, H/2, H*.12, W/2, H/2, H*.88);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+}
+let t0 = null;
+(function loop(ts) { if (!t0) t0 = ts; mesh(ts - t0); requestAnimationFrame(loop); })(0);
+
+const gl = document.getElementById('glow');
+addEventListener('mousemove', e => { gl.style.left = e.clientX + 'px'; gl.style.top = e.clientY + 'px'; });
+
+function countUp(id, target) {
+  let v = 0; const el = document.getElementById(id);
+  const iv = setInterval(() => { v = Math.min(v + 1, target); el.textContent = v; if (v >= target) clearInterval(iv); }, 40);
+}
+// Updated: 7 pending reviews
+setTimeout(() => { countUp('internCount', 10); countUp('pendingCount', 7); countUp('approvedCount', 7); countUp('leaveCount', 2); }, 600);
+
+const cards = [...document.querySelectorAll('.card')];
+cards.forEach((c, i) => setTimeout(() => c.classList.add('visible'), 100 + i * 120));
+cards.forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const r = card.getBoundingClientRect();
+    const dx = (e.clientX - r.left - r.width / 2) / (r.width / 2);
+    const dy = (e.clientY - r.top - r.height / 2) / (r.height / 2);
+    card.style.transform = `perspective(900px) rotateY(${dx * 5}deg) rotateX(${-dy * 5}deg) translateY(-4px) scale(1.01)`;
+    card.style.boxShadow = `${-dx * 10}px ${-dy * 10}px 36px rgba(217,164,65,.14),0 16px 48px rgba(0,0,0,.4)`;
+  });
+  card.addEventListener('mouseleave', () => {
+    card.style.transition = 'transform .5s cubic-bezier(.34,1.56,.64,1),box-shadow .4s ease';
+    card.style.transform = 'perspective(900px) rotateY(0) rotateX(0) translateY(0) scale(1)';
+    card.style.boxShadow = '0 8px 32px rgba(0,0,0,.35)';
+    setTimeout(() => card.style.transition = '', 500);
+  });
+  card.addEventListener('mouseenter', () => card.style.transition = 'transform .12s ease,box-shadow .12s ease');
+});
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('mousemove', e => {
+    const r = item.getBoundingClientRect();
+    if (!item.classList.contains('active')) item.style.transform = `translateY(${(e.clientY - r.top - r.height / 2) * .1}px)`;
+  });
+  item.addEventListener('mouseleave', () => {
+    item.style.transition = 'transform .4s cubic-bezier(.34,1.56,.64,1)';
+    item.style.transform = 'translateY(0)';
+    setTimeout(() => item.style.transition = '', 400);
+  });
+});
+
+const statusCfg = {
+  active: { label:'Active',  color:'var(--teal)',   bg:'rgba(45,212,191,.1)',  border:'rgba(45,212,191,.25)' },
+  behind: { label:'Behind',  color:'var(--accent)', bg:'rgba(217,164,65,.1)',  border:'rgba(217,164,65,.25)' },
+  risk:   { label:'At Risk', color:'var(--red)',    bg:'rgba(255,107,107,.1)', border:'rgba(255,107,107,.25)' }
+};
+
+let currentResumeName = '';
+
+function openProfile(name) {
+  const d = internData[name];
+  if (!d) return;
+  const s = statusCfg[d.status];
+  const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2);
+  const av = document.getElementById('pAvatar');
+  av.style.cssText = 'width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Syne,sans-serif;font-weight:800;font-size:22px;flex-shrink:0;overflow:hidden;padding:0;';
+  if (photoMap[name]) {
+    av.innerHTML = '<img src="' + photoMap[name] + '" alt="' + name + '" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;border-radius:50%;" />';
+  } else {
+    av.style.background = 'linear-gradient(135deg,' + d.bg + ',.35),' + d.bg + ',.1))';
+    av.style.color = d.color;
+    av.style.border = '2px solid ' + d.color + '55';
+    av.textContent = initials;
+  }
+  document.getElementById('pName').textContent = name;
+  document.getElementById('pRole').textContent = d.role + ' · IBM SkillsBuild × InternSync';
+  document.getElementById('pStatusBadge').innerHTML =
+    '<div style="display:inline-flex;align-items:center;gap:5px;background:' + s.bg + ';border:1px solid ' + s.border + ';border-radius:20px;padding:3px 10px;font-family:Syne,sans-serif;font-size:10px;font-weight:700;color:' + s.color + ';">● ' + s.label + '</div>';
+  document.getElementById('pDuration').textContent = 'Jan 15 – Apr 15, 2026';
+  document.getElementById('pPct').textContent = d.pct + '%';
+
+  // All resumes are HTML files
+  const resumePath = resumeMap[name] || '';
+  const resumeFileName = name.replace(/ /g, '_') + '_resume.html';
+  document.getElementById('pResumeName').textContent = resumeFileName;
+  currentResumeName = name;
+
+  const hasRealPath = !!resumePath;
+  document.getElementById('pResumeSize').textContent = hasRealPath
+    ? 'HTML · Click to view in new tab'
+    : 'Path not configured yet';
+  document.getElementById('pResumeBtn').textContent = '↗ View';
+  document.getElementById('pResumeBtn').style.opacity = hasRealPath ? '1' : '0.5';
+  document.getElementById('pResumeBtn').title = hasRealPath ? 'View resume' : 'Resume path not configured';
+
+  document.getElementById('pBar').style.width = '0%';
+  setTimeout(() => { document.getElementById('pBar').style.width = d.pct + '%'; }, 150);
+
+  const sc = [d.color, 'var(--teal)', 'var(--accent)', 'var(--green)', '#c084fc', '#38bdf8'];
+  const skills = skillMap[name] || ['HTML', 'CSS', 'JavaScript'];
+  document.getElementById('pSkills').innerHTML = skills.map((sk, i) =>
+    '<span style="display:inline-flex;align-items:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:4px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:600;color:' + sc[i % sc.length] + '">' + sk + '</span>'
+  ).join('');
+  document.getElementById('profileModal').classList.add('open');
+}
+
+function closeProfile() {
+  document.getElementById('profileModal').classList.remove('open');
+  setTimeout(() => { document.getElementById('pBar').style.width = '0%'; }, 300);
+}
+
+// AFTER
+function downloadResume() {
+  const path = resumeMap[currentResumeName];
+  if (!path) { showToast('⚠ Resume path not configured'); return; }
+  // Store return info so resume page can show a back button
+sessionStorage.setItem('resumeReturnTo', '../mentor-dashboard.html');
+  sessionStorage.setItem('resumeReturnLabel', '← Back to Dashboard');
+  window.location.href = path;   // same tab — browser back works too
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function handleLeave(rowId, action, name) {
+  const row = document.getElementById(rowId);
+  row.querySelectorAll('button').forEach(b => b.disabled = true);
+  const lt = row.querySelector('.leave-type');
+  if (action === 'approve') {
+    row.style.opacity = '.5';
+    lt.textContent = '✓ Approved';
+    lt.style.cssText = 'font-size:10px;font-family:Syne,sans-serif;font-weight:700;letter-spacing:.06em;padding:2px 9px;border-radius:20px;margin-top:4px;display:inline-block;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);color:var(--green)';
+    showToast('✓ Leave approved for ' + name);
+  } else {
+    row.style.opacity = '.5';
+    lt.textContent = '✕ Rejected';
+    lt.style.cssText = 'font-size:10px;font-family:Syne,sans-serif;font-weight:700;letter-spacing:.06em;padding:2px 9px;border-radius:20px;margin-top:4px;display:inline-block;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.2);color:var(--red)';
+    showToast('✕ Leave rejected for ' + name);
+  }
+  let v = parseInt(document.getElementById('leaveCount').textContent);
+  if (v > 0) document.getElementById('leaveCount').textContent = v - 1;
+}
+
+function postAnnouncement() {
+  const txt = document.getElementById('announceText').value.trim();
+  if (!txt) { showToast('⚠ Please write something first'); return; }
+  document.getElementById('announceText').value = '';
+  showToast('📣 Announcement posted to all interns!');
+}
+
+for (let i = 0; i < 10; i++) {
+  const p = document.createElement('div'); p.className = 'particle';
+  const sz = 2 + Math.random() * 4;
+  Object.assign(p.style, { width: sz + 'px', height: sz + 'px', left: Math.random() * 100 + 'vw', top: (60 + Math.random() * 40) + 'vh', animationDuration: (9 + Math.random() * 14) + 's', animationDelay: Math.random() * 10 + 's' });
+  document.body.appendChild(p);
+}
+
+applyAvatarPhotos();
+</script>
+</body>
+</html>

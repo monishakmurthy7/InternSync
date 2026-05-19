@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InternSync — Intern Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#d9a441; --accent2:#f0c060; --bg:#1a1d0f;
+  --card-bg:rgba(255,255,255,0.055); --card-border:rgba(255,255,255,0.13);
+  --text:#f0ede4; --muted:rgba(240,237,228,0.45);
+  --teal:#2dd4bf; --red:#ff6b6b; --sidebar-w:230px;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; display:flex; flex-direction:column; }
+#meshCanvas{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+.glow{ position:fixed; width:380px; height:380px; background:radial-gradient(circle,rgba(217,164,65,.18),transparent 70%); border-radius:50%; pointer-events:none; filter:blur(60px); transform:translate(-50%,-50%); z-index:1; }
+
+.layout{ display:flex; flex:1; position:relative; z-index:5; }
+
+.sidebar{ width:var(--sidebar-w); flex-shrink:0; background:rgba(10,13,6,.6); backdrop-filter:blur(20px); border-right:1px solid rgba(255,255,255,.07); padding:24px 0; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:auto; }
+.sidebar::-webkit-scrollbar{ width:3px; }
+.sidebar::-webkit-scrollbar-thumb{ background:rgba(217,164,65,.15); border-radius:4px; }
+.sidebar-section{ font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(240,237,228,.2); padding:0 20px; margin:18px 0 8px; }
+.sidebar-section:first-child{ margin-top:0; }
+.nav-item{ display:flex; align-items:center; gap:11px; padding:10px 20px; cursor:pointer; position:relative; color:var(--muted); font-size:13px; font-weight:500; transition:color .2s,background .2s; text-decoration:none; }
+.nav-item svg{ width:16px; height:16px; stroke:currentColor; flex-shrink:0; }
+.nav-item:hover{ color:var(--text); background:rgba(255,255,255,.04); }
+.nav-item.active{ color:var(--accent); background:rgba(217,164,65,.08); border-right:2px solid var(--accent); }
+.nav-item.active svg{ stroke:var(--accent); }
+
+main{ flex:1; padding:32px 36px; overflow-y:auto; }
+.section-title{ font-family:'Syne',sans-serif; font-size:13px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:22px; display:flex; align-items:center; gap:10px; }
+.section-title::after{ content:''; flex:1; height:1px; background:rgba(217,164,65,.18); }
+.greeting{ font-family:'Syne',sans-serif; font-size:30px; font-weight:800; line-height:1.1; margin-bottom:6px; }
+.greeting span{ color:var(--accent); }
+.sub{ font-size:14px; color:var(--muted); margin-bottom:32px; }
+
+.stats-row{ display:flex; gap:14px; margin-bottom:32px; flex-wrap:wrap; position:relative; z-index:50; }
+.stat-pill{ display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:12px 18px; backdrop-filter:blur(12px); flex:1; min-width:130px; transition:transform .2s,box-shadow .2s,border-color .2s; position:relative; cursor:default; overflow:visible; }
+.stat-pill:hover{ transform:translateY(-3px); box-shadow:0 8px 24px rgba(217,164,65,.15); border-color:rgba(217,164,65,.25); }
+.stat-icon-box{ width:34px; height:34px; border-radius:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+.stat-icon-box svg{ width:16px; height:16px; }
+.icon-gold{ background:rgba(217,164,65,.15); } .icon-gold svg{ stroke:var(--accent); }
+.icon-teal{ background:rgba(45,212,191,.12); } .icon-teal svg{ stroke:var(--teal); }
+.icon-red{ background:rgba(255,107,107,.12); } .icon-red svg{ stroke:var(--red); }
+.stat-val{ font-family:'Syne',sans-serif; font-size:20px; font-weight:700; color:var(--accent); }
+.stat-lbl{ font-size:11px; color:var(--muted); margin-top:1px; }
+.pill-tooltip{ position:absolute; top:calc(100% + 10px); left:0; background:#1c2010; border:1px solid rgba(217,164,65,.3); border-radius:14px; padding:12px 14px; z-index:9000; box-shadow:0 16px 40px rgba(0,0,0,.85); opacity:0; pointer-events:none; transform:translateY(8px); transition:opacity .22s,transform .22s; min-width:190px; white-space:nowrap; }
+.stat-pill:hover .pill-tooltip{ opacity:1; pointer-events:auto; transform:translateY(0); }
+.tt-title{ font-family:'Syne',sans-serif; font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:9px; }
+.tt-task{ display:flex; align-items:center; gap:9px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:12px; color:var(--text); }
+.tt-task:last-child{ border-bottom:none; padding-bottom:0; }
+.tt-dot{ width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.dot-gold{ background:var(--accent); } .dot-teal{ background:var(--teal); }
+
+.grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; position:relative; z-index:5; }
+.col-span-2{ grid-column:span 2; } .col-span-3{ grid-column:span 3; }
+
+.card{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:18px; padding:22px; backdrop-filter:blur(20px); box-shadow:0 8px 32px rgba(0,0,0,.35); position:relative; overflow:visible; transition:transform .25s ease,box-shadow .25s ease; transform-style:preserve-3d; opacity:0; transform:translateY(24px); }
+.card.visible{ animation:cardIn .55s cubic-bezier(.22,1,.36,1) forwards; }
+.card::before{ content:''; position:absolute; inset:0; border-radius:18px; background:linear-gradient(135deg,rgba(217,164,65,.04),transparent 60%); pointer-events:none; }
+@keyframes cardIn{ from{opacity:0;transform:translateY(28px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.card-title{ font-family:'Syne',sans-serif; font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; }
+
+/* PENDING TASK CARD */
+.task-box{ background:rgba(217,164,65,.09); border:1px solid rgba(217,164,65,.22); border-radius:12px; padding:14px; }
+.task-name{ font-family:'Syne',sans-serif; font-size:14px; font-weight:700; margin-bottom:4px; }
+.task-sub{ font-size:12px; color:var(--muted); margin-bottom:10px; line-height:1.6; }
+.pending-badge{ display:inline-flex; align-items:center; gap:5px; background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.3); border-radius:20px; padding:4px 12px; font-size:11px; color:var(--red); margin-bottom:8px; font-family:'Syne',sans-serif; font-weight:600; }
+.deadline-badge{ display:inline-flex; align-items:center; gap:5px; background:rgba(217,164,65,.15); border:1px solid rgba(217,164,65,.3); border-radius:20px; padding:3px 10px; font-size:11px; color:var(--accent); margin-left:6px; }
+
+/* ATTENDANCE */
+.attendance-horiz{ display:flex; align-items:center; gap:18px; }
+.ring-svg{ flex-shrink:0; }
+.ring-bg{ fill:none; stroke:rgba(255,255,255,.08); }
+.ring-fill{ fill:none; stroke:url(#ringGrad); stroke-linecap:round; transition:stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1); }
+.ring-center{ font-family:'Syne',sans-serif; font-weight:800; font-size:22px; fill:var(--text); text-anchor:middle; dominant-baseline:central; }
+.ring-sublabel{ font-size:10px; fill:var(--muted); text-anchor:middle; dominant-baseline:central; }
+.att-details{ flex:1; }
+.att-row{ display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+.att-row:last-child{ border-bottom:none; }
+.att-row-label{ font-size:11px; color:var(--muted); }
+.att-row-val{ font-family:'Syne',sans-serif; font-weight:700; font-size:13px; }
+.val-gold{ color:var(--accent); } .val-teal{ color:var(--teal); } .val-red{ color:var(--red); }
+
+/* DEADLINE */
+.deadline-card{ background:rgba(255,107,107,.07); border:1px solid rgba(255,107,107,.2); border-radius:12px; padding:14px; }
+.deadline-title{ font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:var(--red); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.deadline-date{ font-size:20px; font-family:'Syne',sans-serif; font-weight:800; color:#fff; }
+.deadline-sub{ font-size:11px; color:var(--muted); margin-top:2px; }
+.countdown{ margin-top:10px; display:flex; gap:6px; }
+.cd-unit{ text-align:center; background:rgba(255,107,107,.1); border-radius:8px; padding:7px 8px; flex:1; }
+.cd-num{ font-family:'Syne',sans-serif; font-size:15px; font-weight:800; color:var(--red); display:block; }
+.cd-lbl{ font-size:9px; color:var(--muted); }
+
+/* PROGRESS */
+.progress-wrap{ position:relative; }
+.progress-top-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.progress-label{ font-family:'Syne',sans-serif; font-size:12px; font-weight:600; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; }
+.progress-pct-label{ font-family:'Syne',sans-serif; font-size:14px; font-weight:800; color:var(--accent); }
+.progress-track{ height:10px; background:rgba(255,255,255,.07); border-radius:10px; overflow:hidden; margin-bottom:16px; position:relative; }
+.progress-fill{ height:100%; border-radius:10px; background:linear-gradient(90deg,#b87c1a,var(--accent),var(--accent2)); width:0; transition:width 1.4s cubic-bezier(.4,0,.2,1); position:relative; overflow:hidden; }
+.progress-fill::after{ content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,.3) 50%,transparent); animation:shineBar 2.2s infinite linear; }
+@keyframes shineBar{ from{transform:translateX(-100%)} to{transform:translateX(200%)} }
+.timeline-row{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+.timeline-dot-group{ display:flex; flex-direction:column; align-items:center; gap:4px; }
+.tl-dot{ width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.18); flex-shrink:0; }
+.tl-dot.active{ background:var(--accent); box-shadow:0 0 6px rgba(217,164,65,.6); }
+.tl-dot.reached{ background:rgba(217,164,65,.5); }
+.tl-label{ font-size:10px; color:var(--muted); font-family:'Syne',sans-serif; font-weight:600; }
+.progress-days-row{ display:flex; justify-content:flex-end; margin-top:2px; }
+.progress-days{ font-size:12px; color:var(--muted); }
+.progress-days span{ font-family:'Syne',sans-serif; font-weight:800; color:var(--accent); }
+
+/* ═══ FEEDBACK CARD — live from mentor ═══ */
+.fb-header-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.fb-refresh-btn{ display:flex; align-items:center; gap:5px; background:rgba(217,164,65,.08); border:1px solid rgba(217,164,65,.2); border-radius:20px; padding:4px 10px; font-size:10px; font-family:'Syne',sans-serif; font-weight:700; color:var(--accent); cursor:pointer; transition:all .2s; }
+.fb-refresh-btn:hover{ background:rgba(217,164,65,.16); }
+.fb-refresh-btn svg{ width:11px; height:11px; stroke:var(--accent); }
+.fb-refresh-btn.spinning svg{ animation:spin .7s linear infinite; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+.fb-empty{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 16px; text-align:center; gap:8px; }
+.fb-empty svg{ width:36px; height:36px; stroke:rgba(217,164,65,.2); }
+.fb-empty p{ font-size:12px; color:var(--muted); }
+
+.fb-scroll{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+/* single feedback item */
+.fb-item{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-left:3px solid var(--accent); border-radius:0 12px 12px 0; padding:14px 16px; position:relative; display:flex; flex-direction:column; gap:8px; transition:background .2s,border-color .2s; animation:fadeSlide .4s ease forwards; }
+@keyframes fadeSlide{ from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.fb-item:hover{ background:rgba(255,255,255,.07); }
+.fb-item::before{ content:'"'; position:absolute; top:-4px; left:12px; font-size:32px; font-family:'Syne',sans-serif; color:rgba(217,164,65,.15); line-height:1; }
+.fb-item-top{ display:flex; align-items:center; gap:8px; }
+.fb-stars{ display:flex; gap:2px; font-size:11px; }
+.fb-date{ font-size:10px; color:var(--muted); margin-left:auto; }
+.fb-text{ font-size:12px; line-height:1.6; padding-left:2px; color:var(--text); }
+.fb-tags{ display:flex; flex-wrap:wrap; gap:5px; }
+.fb-tag{ font-size:9px; font-family:'Syne',sans-serif; font-weight:700; padding:2px 8px; border-radius:20px; background:rgba(217,164,65,.1); border:1px solid rgba(217,164,65,.22); color:var(--accent); letter-spacing:.04em; }
+.fb-metrics{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.fb-metric{ text-align:center; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:5px 4px; }
+.fb-metric-val{ font-family:'Syne',sans-serif; font-size:12px; font-weight:800; color:var(--accent); }
+.fb-metric-lbl{ font-size:8px; color:var(--muted); margin-top:1px; text-transform:uppercase; letter-spacing:.04em; }
+.fb-improvements{ display:flex; flex-direction:column; gap:4px; }
+.fb-imp-item{ display:flex; gap:6px; font-size:11px; color:var(--muted); }
+.fb-imp-arrow{ color:var(--accent); font-weight:700; flex-shrink:0; }
+.mentor-tag{ display:inline-flex; align-items:center; gap:4px; background:rgba(217,164,65,.1); border:1px solid rgba(217,164,65,.22); border-radius:10px; padding:2px 8px; font-size:10px; color:var(--accent); font-family:'Syne',sans-serif; font-weight:600; }
+.mentor-tag svg{ width:9px; height:9px; stroke:var(--accent); }
+
+/* skeleton shimmer */
+.skel{ background:rgba(255,255,255,.06); border-radius:10px; animation:shimmer 1.4s ease-in-out infinite; }
+@keyframes shimmer{ 0%,100%{opacity:.5} 50%{opacity:1} }
+
+/* new badge */
+.new-badge{ display:inline-flex; align-items:center; gap:4px; background:rgba(45,212,191,.1); border:1px solid rgba(45,212,191,.25); border-radius:20px; padding:2px 8px; font-size:9px; font-family:'Syne',sans-serif; font-weight:700; color:var(--teal); }
+
+.particle{ position:fixed; border-radius:50%; background:rgba(217,164,65,.14); pointer-events:none; z-index:2; animation:floatUp linear infinite; }
+@keyframes floatUp{ 0%{transform:translateY(0) scale(1);opacity:.4} 50%{transform:translateY(-70px) scale(1.1);opacity:.15} 100%{transform:translateY(-140px) scale(.8);opacity:0} }
+</style>
+</head>
+<body>
+
+<canvas id="meshCanvas"></canvas>
+<div class="glow" id="glow"></div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Menu</div>
+    <a class="nav-item active" href="intern-dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" href="intern-content.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+      Content for You
+    </a>
+    <a class="nav-item" href="intern-taskassigned.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Task Assigned
+    </a>
+    <a class="nav-item" href="intern-submission.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Submission
+    </a>
+    <a class="nav-item" href="intern-feedback.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Feedback
+    </a>
+    <div class="sidebar-section">Communication</div>
+    <a class="nav-item" href="intern-leave.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Leave Request
+    </a>
+    <a class="nav-item" href="intern-discussion.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      Discussion Room
+    </a>
+    <a class="nav-item" href="intern-pvtchat.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>
+      Chat with Mentor
+    </a>
+    <div class="sidebar-section">Profile</div>
+    <a class="nav-item" href="intern-profile.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      My Profile
+    </a>
+    <a class="nav-item" href="intern-certificate.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+      View Certificate
+    </a>
+  </aside>
+
+  <main>
+    <div class="greeting">Good morning, <span>Monisha K</span></div>
+    <div class="sub">Here's what's on your plate today — stay focused, you're doing great.</div>
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-pill">
+        <div class="stat-icon-box icon-gold">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>
+        </div>
+        <div><div class="stat-val">2</div><div class="stat-lbl">Total Tasks</div></div>
+        <div class="pill-tooltip">
+          <div class="tt-title">All Tasks</div>
+          <div class="tt-task"><span class="tt-dot dot-teal"></span>Build Intern Dashboard UI</div>
+          <div class="tt-task"><span class="tt-dot dot-gold"></span>Connect Node.js Backend</div>
+        </div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-icon-box icon-teal">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div><div class="stat-val" style="color:var(--teal)">1</div><div class="stat-lbl">Completed</div></div>
+        <div class="pill-tooltip">
+          <div class="tt-title">Completed</div>
+          <div class="tt-task"><span class="tt-dot dot-teal"></span>Build Intern Dashboard UI</div>
+        </div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-icon-box icon-red">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div><div class="stat-val" style="color:var(--red)">1</div><div class="stat-lbl">Pending</div></div>
+        <div class="pill-tooltip">
+          <div class="tt-title">Pending</div>
+          <div class="tt-task"><span class="tt-dot dot-gold"></span>Connect Node.js Backend</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Overview</div>
+    <div class="grid">
+
+      <!-- CARD 1: Pending Task -->
+      <div class="card" id="c1">
+        <div class="card-title">Pending Task</div>
+        <div class="task-box">
+          <div style="margin-bottom:8px;">
+            <span class="pending-badge">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Pending
+            </span>
+            <span class="deadline-badge">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Due Apr 14
+            </span>
+          </div>
+          <div class="task-name">Connect Node.js Backend</div>
+          <div class="task-sub">Integrate frontend with backend APIs using Express and MySQL. Proper async handling, secure API usage, and clean code structure required.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+            <span style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:2px 8px;font-size:10px;color:var(--muted);">Node.js</span>
+            <span style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:2px 8px;font-size:10px;color:var(--muted);">Express.js</span>
+            <span style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:2px 8px;font-size:10px;color:var(--muted);">MySQL</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 2: Attendance -->
+      <div class="card" id="c2">
+        <div class="card-title">Attendance</div>
+        <div class="attendance-horiz">
+          <svg width="100" height="100" class="ring-svg">
+            <defs>
+              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#d9a441"/>
+                <stop offset="100%" stop-color="#f0c060"/>
+              </linearGradient>
+            </defs>
+            <g transform="rotate(-90 50 50)">
+              <circle class="ring-bg" cx="50" cy="50" r="40" stroke-width="8"/>
+              <circle class="ring-fill" id="ringFill" cx="50" cy="50" r="40" stroke-width="8" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+            </g>
+            <text class="ring-center" id="ringPct" x="50" y="47">0%</text>
+            <text class="ring-sublabel" x="50" y="62">Present</text>
+          </svg>
+          <div class="att-details">
+            <div class="att-row"><span class="att-row-label">Days Present</span><span class="att-row-val val-teal">40</span></div>
+            <div class="att-row"><span class="att-row-label">Days Absent</span><span class="att-row-val val-red">10</span></div>
+            <div class="att-row"><span class="att-row-label">Total Days</span><span class="att-row-val val-gold">50</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 3: Submission Deadline -->
+      <div class="card" id="c3">
+        <div class="card-title">Submission Deadline</div>
+        <div class="deadline-card">
+          <div class="deadline-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Final Project
+          </div>
+          <div class="deadline-date">July 20, 2026</div>
+          <div class="deadline-sub">Submission portal closes at midnight</div>
+          <div class="countdown" id="countdown"></div>
+        </div>
+      </div>
+
+      <!-- CARD 4: Internship Progress -->
+      <div class="card col-span-2" id="c4">
+        <div class="card-title">Internship Progress</div>
+        <div class="progress-wrap">
+          <div class="progress-top-row">
+            <span class="progress-label">Progress</span>
+            <span class="progress-pct-label" id="progPctLabel">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="timeline-row">
+            <div class="timeline-dot-group"><div class="tl-dot reached"></div><span class="tl-label">Jan</span></div>
+            <div class="timeline-dot-group"><div class="tl-dot reached"></div><span class="tl-label">Feb</span></div>
+            <div class="timeline-dot-group"><div class="tl-dot reached"></div><span class="tl-label">Mar</span></div>
+            <div class="timeline-dot-group"><div class="tl-dot active"></div><span class="tl-label">Apr</span></div>
+            <div class="timeline-dot-group"><div class="tl-dot"></div><span class="tl-label">End</span></div>
+          </div>
+          <div class="progress-days-row">
+            <span class="progress-days">Days completed: <span id="daysNum">0</span> / 100</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 5: Recent Feedback — LIVE FROM MENTOR -->
+      <div class="card col-span-3" id="c5">
+        <div class="fb-header-row">
+          <div class="card-title" style="margin-bottom:0;">
+            Feedback from Mentor
+            <span id="fbBadge" style="display:none;" class="new-badge" style="margin-left:8px;">
+              <svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span id="fbCount">0</span> received
+            </span>
+          </div>
+          <button class="fb-refresh-btn" id="refreshBtn" onclick="loadFeedback()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+            Refresh
+          </button>
+        </div>
+        <div id="fbContainer" style="margin-top:14px;">
+          <!-- skeleton -->
+          <div class="fb-scroll">
+            <div class="skel" style="height:120px;"></div>
+            <div class="skel" style="height:120px;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+// ── CONFIG ───────────────────────────────────────────────────
+const API_BASE   = window.location.port === '3000' ? '' : 'http://localhost:3000';
+const INTERN_ID  = 19;   // Monisha K's user ID — matches INTERN_ID_MAP in mentor-feedback.html
+
+// ── MESH BACKGROUND ──────────────────────────────────────────
+const cvs = document.getElementById('meshCanvas'), ctx = cvs.getContext('2d');
+let W, H;
+function rsz(){ W = cvs.width = innerWidth; H = cvs.height = innerHeight; }
+rsz(); addEventListener('resize', rsz);
+const pts = [
+  {ax:.65,ay:.25,rx:.3,ry:.2,fx:.00028,fy:.00016,px:0,py:1,r:620,c:'rgba(180,120,20,'},
+  {ax:.2,ay:.65,rx:.22,ry:.28,fx:.00018,fy:.00026,px:2.4,py:0,r:540,c:'rgba(155,100,15,'},
+  {ax:.5,ay:.1,rx:.28,ry:.2,fx:.00022,fy:.00014,px:1,py:2,r:580,c:'rgba(50,65,20,'},
+  {ax:.88,ay:.78,rx:.2,ry:.22,fx:.00013,fy:.00031,px:.5,py:.8,r:500,c:'rgba(44,58,18,'},
+  {ax:.08,ay:.18,rx:.18,ry:.22,fx:.00025,fy:.0002,px:3,py:1.5,r:460,c:'rgba(20,24,12,'},
+  {ax:.55,ay:.88,rx:.24,ry:.18,fx:.00017,fy:.00023,px:1.8,py:2.7,r:490,c:'rgba(28,32,16,'},
+];
+function mesh(t){
+  ctx.fillStyle='#1a1d0f'; ctx.fillRect(0,0,W,H);
+  pts.forEach(p=>{
+    const x=W*(p.ax+p.rx*Math.sin(p.fx*t+p.px)), y=H*(p.ay+p.ry*Math.cos(p.fy*t+p.py));
+    const g=ctx.createRadialGradient(x,y,0,x,y,p.r);
+    g.addColorStop(0,p.c+'0.36)'); g.addColorStop(.5,p.c+'0.11)'); g.addColorStop(1,p.c+'0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  });
+  const v=ctx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,H*.88);
+  v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.5)');
+  ctx.fillStyle=v; ctx.fillRect(0,0,W,H);
+}
+let t0=null;
+(function loop(ts){ if(!t0)t0=ts; mesh(ts-t0); requestAnimationFrame(loop); })(0);
+const gl=document.getElementById('glow');
+addEventListener('mousemove',e=>{ gl.style.left=e.clientX+'px'; gl.style.top=e.clientY+'px'; });
+
+// ── CARD ANIMATIONS ──────────────────────────────────────────
+const cards=[...document.querySelectorAll('.card')];
+cards.forEach((c,i)=>setTimeout(()=>c.classList.add('visible'),120*i+80));
+cards.forEach(card=>{
+  card.addEventListener('mousemove',e=>{
+    const r=card.getBoundingClientRect();
+    const dx=(e.clientX-r.left-r.width/2)/(r.width/2), dy=(e.clientY-r.top-r.height/2)/(r.height/2);
+    card.style.transform=`perspective(800px) rotateY(${dx*7}deg) rotateX(${-dy*7}deg) translateY(-6px) scale(1.02)`;
+    card.style.boxShadow=`${-dx*12}px ${-dy*12}px 40px rgba(217,164,65,.18),0 20px 50px rgba(0,0,0,.4)`;
+  });
+  card.addEventListener('mouseleave',()=>{
+    card.style.transition='transform .5s cubic-bezier(.34,1.56,.64,1),box-shadow .4s ease';
+    card.style.transform='perspective(800px) rotateY(0) rotateX(0) translateY(0) scale(1)';
+    card.style.boxShadow='0 8px 32px rgba(0,0,0,.35)';
+    setTimeout(()=>card.style.transition='',500);
+  });
+  card.addEventListener('mouseenter',()=>card.style.transition='transform .12s ease,box-shadow .12s ease');
+});
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('mousemove',e=>{
+    const r=item.getBoundingClientRect();
+    if(!item.classList.contains('active')) item.style.transform=`translateY(${(e.clientY-r.top-r.height/2)*.12}px)`;
+  });
+  item.addEventListener('mouseleave',()=>{
+    item.style.transition='transform .4s cubic-bezier(.34,1.56,.64,1)';
+    item.style.transform='translateY(0)';
+    setTimeout(()=>item.style.transition='',400);
+  });
+});
+
+// ── ATTENDANCE RING — 80% ────────────────────────────────────
+setTimeout(()=>{
+  const ring=document.getElementById('ringFill');
+  const pctText=document.getElementById('ringPct');
+  const percent=80;
+  ring.style.strokeDashoffset=251.3-(percent/100)*251.3;
+  pctText.textContent=percent+'%';
+},600);
+
+// ── PROGRESS — 80/100 ───────────────────────────────────────
+setTimeout(()=>{
+  document.getElementById('progressFill').style.width='80%';
+  document.getElementById('progPctLabel').textContent='80%';
+  let v=0;
+  const iv=setInterval(()=>{
+    v=Math.min(v+1,80);
+    document.getElementById('daysNum').textContent=v;
+    if(v>=80) clearInterval(iv);
+  },14);
+},800);
+
+// ── COUNTDOWN ───────────────────────────────────────────────
+const deadlineTarget=new Date('2026-07-20T23:59:00');
+function renderCountdown(){
+  const now=new Date(), diff=deadlineTarget-now;
+  if(diff<=0){ document.getElementById('countdown').innerHTML='<span style="color:var(--red);font-size:12px;">Deadline passed</span>'; return; }
+  const d=Math.floor(diff/86400000), h=Math.floor((diff%86400000)/3600000),
+        m=Math.floor((diff%3600000)/60000), s=Math.floor((diff%60000)/1000);
+  document.getElementById('countdown').innerHTML=
+    `<div class="cd-unit"><span class="cd-num">${d}</span><span class="cd-lbl">Days</span></div>
+     <div class="cd-unit"><span class="cd-num">${h}</span><span class="cd-lbl">Hrs</span></div>
+     <div class="cd-unit"><span class="cd-num">${m}</span><span class="cd-lbl">Min</span></div>
+     <div class="cd-unit"><span class="cd-num">${s}</span><span class="cd-lbl">Sec</span></div>`;
+}
+renderCountdown();
+setInterval(renderCountdown,1000);
+
+// ── LIVE FEEDBACK FROM MENTOR ────────────────────────────────
+function formatDate(raw){
+  if(!raw) return '';
+  const d=new Date(raw);
+  if(isNaN(d)) return raw;
+  const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${M[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+// check if a feedback entry is within the last 3 days (show "New" label)
+function isNew(raw){
+  if(!raw) return false;
+  return (Date.now() - new Date(raw)) < 3 * 24 * 60 * 60 * 1000;
+}
+
+function renderFeedback(list){
+  const container = document.getElementById('fbContainer');
+
+  if(!list || !list.length){
+    container.innerHTML = `
+      <div class="fb-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+        </svg>
+        <p>No feedback from your mentor yet. Check back soon!</p>
+      </div>`;
+    return;
+  }
+
+  // show badge with count
+  const badge = document.getElementById('fbBadge');
+  badge.style.display = 'inline-flex';
+  document.getElementById('fbCount').textContent = list.length;
+
+  container.innerHTML = `<div class="fb-scroll">${list.map((f, idx) => {
+    const rating     = f.rating || 0;
+    const tags       = Array.isArray(f.tags) ? f.tags : (f.tags ? JSON.parse(f.tags) : []);
+    const imps       = Array.isArray(f.improvements) ? f.improvements : (f.improvements ? JSON.parse(f.improvements) : []);
+    const metrics    = {
+      efficiency:    f.efficiency    || 0,
+      punctuality:   f.punctuality   || 0,
+      codeQuality:   f.codeQuality   || f.code_quality || 0,
+      communication: f.communication || 0,
+    };
+    const tagsHTML = tags.map(t=>`<span class="fb-tag">${t}</span>`).join('');
+    const impsHTML = imps.length
+      ? `<div class="fb-improvements">${imps.map(i=>`<div class="fb-imp-item"><span class="fb-imp-arrow">→</span>${i}</div>`).join('')}</div>`
+      : '';
+    const metricsAny = metrics.efficiency || metrics.punctuality || metrics.codeQuality || metrics.communication;
+
+    return `
+      <div class="fb-item" style="animation-delay:${idx*0.07}s">
+        <div class="fb-item-top">
+          <span class="mentor-tag">
+            <svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Mentor
+          </span>
+          ${isNew(f.created_at) ? '<span class="new-badge" style="margin-left:4px;">✦ New</span>' : ''}
+          <div class="fb-stars">${'⭐'.repeat(rating)}${'☆'.repeat(5-rating)}</div>
+          <span class="fb-date">${formatDate(f.created_at)}</span>
+        </div>
+        <div class="fb-text">${f.message || f.text || ''}</div>
+        ${tags.length ? `<div class="fb-tags">${tagsHTML}</div>` : ''}
+        ${metricsAny ? `
+          <div class="fb-metrics">
+            <div class="fb-metric"><div class="fb-metric-val">${metrics.efficiency}%</div><div class="fb-metric-lbl">Efficiency</div></div>
+            <div class="fb-metric"><div class="fb-metric-val">${metrics.punctuality}%</div><div class="fb-metric-lbl">Punctuality</div></div>
+            <div class="fb-metric"><div class="fb-metric-val">${metrics.codeQuality}%</div><div class="fb-metric-lbl">Code</div></div>
+            <div class="fb-metric"><div class="fb-metric-val">${metrics.communication}%</div><div class="fb-metric-lbl">Comms</div></div>
+          </div>` : ''}
+        ${impsHTML}
+      </div>`;
+  }).join('')}</div>`;
+}
+
+async function loadFeedback(){
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+
+  try {
+    const res  = await fetch(`${API_BASE}/api/feedback?intern_id=${INTERN_ID}`);
+    const data = await res.json();
+    if(!res.ok || !data.success) throw new Error(data.message || 'Failed');
+    renderFeedback(data.feedback);
+  } catch(err) {
+    console.error('loadFeedback:', err);
+    document.getElementById('fbContainer').innerHTML = `
+      <div class="fb-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <p style="color:var(--red);">Couldn't load feedback — make sure the server is running.</p>
+      </div>`;
+  } finally {
+    btn.classList.remove('spinning');
+  }
+}
+
+// ── FLOATING PARTICLES ───────────────────────────────────────
+for(let i=0;i<10;i++){
+  const p=document.createElement('div'); p.className='particle';
+  const sz=2+Math.random()*4;
+  Object.assign(p.style,{
+    width:sz+'px', height:sz+'px',
+    left:Math.random()*100+'vw',
+    top:(65+Math.random()*35)+'vh',
+    animationDuration:(9+Math.random()*14)+'s',
+    animationDelay:Math.random()*10+'s'
+  });
+  document.body.appendChild(p);
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+loadFeedback();
+
+// Auto-refresh every 60 seconds so new feedback appears without a page reload
+setInterval(loadFeedback, 60_000);
+</script>
+</body>
+</html>

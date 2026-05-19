@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hrithika Gowda — Resume</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--accent:#818cf8;--accent2:#a5b4fc;--bg:#0f1209;--card:rgba(255,255,255,.055);--border:rgba(255,255,255,.10);--text:#f0ede4;--muted:rgba(240,237,228,.5)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:72px 24px 48px}
+.page{max-width:780px;margin:0 auto}
+
+.header{display:flex;align-items:flex-start;gap:24px;margin-bottom:36px}
+.av{width:80px;height:80px;border-radius:50%;border:2px solid #818cf855;overflow:hidden;flex-shrink:0;background:linear-gradient(135deg,rgba(99,102,241,.3),rgba(99,102,241,.1))}
+.av-init{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--accent)}
+.hinfo{flex:1}
+.name{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;line-height:1;margin-bottom:6px}
+.name span{color:var(--accent)}
+.title{font-size:13px;color:var(--muted);margin-bottom:12px}
+.badges{display:flex;flex-wrap:wrap;gap:7px}
+.badge{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:20px;border:1px solid}
+.section{margin-bottom:28px}
+.sec-title{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.sec-title::after{content:'';flex:1;height:1px;background:#818cf833}
+.contact-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.contact-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.contact-label{font-size:9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.contact-val{font-size:12px;font-weight:500;color:var(--text)}
+.skill-wrap{display:flex;flex-wrap:wrap;gap:7px}
+.skill-pill{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:5px 13px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:var(--text)}
+.exp-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:12px;position:relative;overflow:hidden}
+.exp-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--accent),transparent)}
+.exp-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.exp-role{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text)}
+.exp-period{font-size:11px;color:var(--muted)}
+.exp-company{font-size:12px;color:var(--accent);margin-bottom:8px}
+.exp-desc{font-size:12px;color:var(--muted);line-height:1.7}
+.exp-desc li{list-style:none;padding-left:14px;position:relative;margin-bottom:3px}
+.exp-desc li::before{content:'▸';position:absolute;left:0;color:var(--accent);font-size:10px}
+.edu-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 20px;margin-bottom:10px}
+.edu-deg{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px}
+.edu-inst{font-size:12px;color:var(--accent);margin-bottom:2px}
+.edu-yr{font-size:11px;color:var(--muted)}
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.prog-label{font-size:12px;color:var(--text);width:120px;flex-shrink:0}
+.prog-track{flex:1;height:5px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.prog-pct{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--accent);width:32px;text-align:right}
+.cert-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.cert-item:last-child{border-bottom:none}
+.cert-icon{width:32px;height:32px;border-radius:8px;background:#818cf815;border:1px solid #818cf833;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cert-icon svg{width:15px;height:15px;stroke:var(--accent)}
+.cert-name{font-size:12px;font-weight:600;color:var(--text)}
+.cert-org{font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+  <div class="header">
+ <div class="av"><img src="../../images/hrithika.jpeg" alt="Hrithika" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;border-radius:50%;"></div>
+    <div class="hinfo">
+      <div class="name">Hrithika <span>Gowda</span></div>
+      <div class="title">Backend Intern · IBM SkillsBuild × InternSync · Bengaluru, Karnataka</div>
+      <div class="badges">
+        <span class="badge" style="background:#818cf815;border-color:#818cf844;color:#818cf8">Backend</span>
+        <span class="badge" style="background:rgba(217,164,65,.1);border-color:rgba(217,164,65,.3);color:#d9a441">Behind</span>
+        <span class="badge" style="background:rgba(74,222,128,.08);border-color:rgba(74,222,128,.2);color:#4ade80">50% Progress</span>
+      </div>
+    </div>
+  </div>
+  <div class="section"><div class="sec-title">Contact</div><div class="contact-grid"><div class="contact-item"><div class="contact-label">Email</div><div class="contact-val">hrithika.gowda@internsync.in</div></div><div class="contact-item"><div class="contact-label">Phone</div><div class="contact-val">+91 95678 90123</div></div><div class="contact-item"><div class="contact-label">GitHub</div><div class="contact-val">github.com/hrithikagowda</div></div></div></div>
+  <div class="section"><div class="sec-title">Objective</div><div class="exp-card"><div class="exp-desc" style="font-style:italic;color:var(--text)">Java backend developer building reliable enterprise-grade services with Spring Boot. Currently focused on closing internship milestone gaps and strengthening AWS and REST API documentation skills. Committed to delivering quality, well-tested code.</div></div></div>
+  <div class="section"><div class="sec-title">Technical Skills</div><div class="skill-wrap"><span class="skill-pill">Java</span><span class="skill-pill">Spring Boot</span><span class="skill-pill">MySQL</span><span class="skill-pill">AWS EC2</span><span class="skill-pill">REST APIs</span><span class="skill-pill">Maven</span><span class="skill-pill">Hibernate</span><span class="skill-pill">JUnit</span><span class="skill-pill">Git</span><span class="skill-pill">Linux</span><span class="skill-pill">Postman</span><span class="skill-pill">Redis</span></div></div>
+  <div class="section"><div class="sec-title">Proficiency</div><div class="exp-card"><div class="prog-row"><div class="prog-label">Java</div><div class="prog-track"><div class="prog-fill" style="width:80%"></div></div><div class="prog-pct">80%</div></div><div class="prog-row"><div class="prog-label">Spring Boot</div><div class="prog-track"><div class="prog-fill" style="width:72%"></div></div><div class="prog-pct">72%</div></div><div class="prog-row"><div class="prog-label">MySQL</div><div class="prog-track"><div class="prog-fill" style="width:75%"></div></div><div class="prog-pct">75%</div></div><div class="prog-row"><div class="prog-label">REST APIs</div><div class="prog-track"><div class="prog-fill" style="width:68%"></div></div><div class="prog-pct">68%</div></div><div class="prog-row"><div class="prog-label">AWS</div><div class="prog-track"><div class="prog-fill" style="width:55%"></div></div><div class="prog-pct">55%</div></div></div></div>
+  <div class="section">
+    <div class="sec-title">Internship Experience</div>
+    <div class="exp-card">
+      <div class="exp-top"><div class="exp-role">Backend Intern</div><div class="exp-period">Jan 15 – Apr 15, 2026</div></div>
+      <div class="exp-company">IBM SkillsBuild × InternSync · Bengaluru</div>
+      <ul class="exp-desc"><li>Developed Spring Boot microservice for intern certificate generation integrated with the main platform.</li><li>Implemented Hibernate ORM mappings for 6 entity classes reducing raw SQL boilerplate by 70%.</li><li>Wrote JUnit 5 test suites achieving 72% code coverage on the certificate service module.</li><li>Currently catching up on API documentation milestone; on track to complete by end of week.</li></ul>
+    </div>
+  </div>
+  <div class="section"><div class="sec-title">Projects</div><div class="exp-card"><div class="exp-top"><div class="exp-role">Certificate Generation Microservice</div><div class="exp-period">2026</div></div><div class="exp-company">Java · Spring Boot · MySQL · AWS S3</div><ul class="exp-desc"><li>Automated PDF certificate generation for interns, triggered on milestone completion.</li><li>Stored generated PDFs on AWS S3 with signed URL access expiring after 24 hours.</li></ul></div><div class="exp-card"><div class="exp-top"><div class="exp-role">Student Result Portal</div><div class="exp-period">2025</div></div><div class="exp-company">Java · Spring MVC · MySQL · Thymeleaf</div><ul class="exp-desc"><li>Web portal for college result management handling 1,200+ student records.</li><li>Implemented role-based views for students, faculty, and admin with Spring Security.</li></ul></div></div>
+  <div class="section"><div class="sec-title">Education</div><div class="edu-card"><div class="edu-deg">B.E. in Computer Science</div><div class="edu-inst">Visvesvaraya Technological University, Bengaluru</div><div class="edu-yr">2022 – 2026 · CGPA: 7.9 / 10</div></div></div>
+  <div class="section"><div class="sec-title">Certifications</div><div class="exp-card"><div class="cert-item"><div class="cert-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg></div><div><div class="cert-name">Java Programming Masterclass</div><div class="cert-org">Udemy · 2024</div></div></div><div class="cert-item"><div class="cert-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg></div><div><div class="cert-name">Spring Boot & Spring Framework</div><div class="cert-org">Udemy · 2024</div></div></div><div class="cert-item"><div class="cert-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg></div><div><div class="cert-name">AWS Cloud Essentials</div><div class="cert-org">AWS · 2025</div></div></div></div></div>
+  <div class="section"><div class="sec-title">Languages</div><div class="skill-wrap"><span class="skill-pill">English (Fluent)</span><span class="skill-pill">Kannada (Native)</span><span class="skill-pill">Hindi (Intermediate)</span></div></div>
+</div>
+<script>
+(function () {
+  var returnTo    = sessionStorage.getItem('resumeReturnTo');
+  var returnLabel = sessionStorage.getItem('resumeReturnLabel') || '← Back';
+  if (!returnTo) return;
+
+  var btn = document.createElement('a');
+  btn.href = returnTo;
+  btn.textContent = returnLabel;
+  btn.onclick = function () {
+    sessionStorage.removeItem('resumeReturnTo');
+    sessionStorage.removeItem('resumeReturnLabel');
+  };
+  Object.assign(btn.style, {
+    position:       'fixed',
+    top:            '20px',
+    left:           '20px',
+    zIndex:         '9999',
+    display:        'inline-flex',
+    alignItems:     'center',
+    padding:        '8px 18px',
+    background:     'rgba(15,18,9,0.88)',
+    border:         '1px solid rgba(217,164,65,0.45)',
+    borderRadius:   '30px',
+    color:          '#d9a441',
+    fontFamily:     "'Syne', sans-serif",
+    fontSize:       '12px',
+    fontWeight:     '700',
+    letterSpacing:  '.06em',
+    textDecoration: 'none',
+    backdropFilter: 'blur(14px)',
+    boxShadow:      '0 4px 20px rgba(0,0,0,0.55)',
+    cursor:         'pointer',
+  });
+  btn.onmouseover = function () {
+    btn.style.background = 'rgba(217,164,65,0.18)';
+    btn.style.transform  = 'translateY(-1px)';
+  };
+  btn.onmouseout = function () {
+    btn.style.background = 'rgba(15,18,9,0.88)';
+    btn.style.transform  = 'translateY(0)';
+  };
+  document.body.appendChild(btn);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monisha K — Resume</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#d9a441;--accent2:#f0c060;--bg:#0f1209;
+  --card:rgba(255,255,255,.055);--border:rgba(255,255,255,.10);
+  --text:#f0ede4;--muted:rgba(240,237,228,.5);
+  --teal:#2dd4bf;--green:#4ade80;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:72px 24px 48px}
+.page{max-width:780px;margin:0 auto}
+
+
+/* header */
+.header{display:flex;align-items:flex-start;gap:24px;margin-bottom:36px}
+.av{width:80px;height:80px;border-radius:50%;border:2px solid rgba(217,164,65,.35);overflow:hidden;flex-shrink:0;background:linear-gradient(135deg,rgba(217,164,65,.3),rgba(217,164,65,.1))}
+.av img{width:100%;height:100%;object-fit:cover;object-position:center top}
+.av-init{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--accent)}
+.hinfo{flex:1}
+.name{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;line-height:1;margin-bottom:6px}
+.name span{color:var(--accent)}
+.title{font-size:13px;color:var(--muted);margin-bottom:12px}
+.badges{display:flex;flex-wrap:wrap;gap:7px}
+.badge{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:20px;border:1px solid}
+.bg-gold{background:rgba(217,164,65,.1);border-color:rgba(217,164,65,.3);color:var(--accent)}
+.bg-teal{background:rgba(45,212,191,.08);border-color:rgba(45,212,191,.25);color:var(--teal)}
+.bg-green{background:rgba(74,222,128,.08);border-color:rgba(74,222,128,.2);color:var(--green)}
+
+/* section */
+.section{margin-bottom:28px}
+.sec-title{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.sec-title::after{content:'';flex:1;height:1px;background:rgba(217,164,65,.2)}
+
+/* contact row */
+.contact-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.contact-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.contact-label{font-size:9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.contact-val{font-size:12px;font-weight:500;color:var(--text)}
+
+/* skills */
+.skill-wrap{display:flex;flex-wrap:wrap;gap:7px}
+.skill-pill{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:5px 13px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:var(--text)}
+
+/* experience / project cards */
+.exp-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:12px;position:relative;overflow:hidden}
+.exp-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--accent),transparent)}
+.exp-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.exp-role{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text)}
+.exp-period{font-size:11px;color:var(--muted)}
+.exp-company{font-size:12px;color:var(--accent);margin-bottom:8px}
+.exp-desc{font-size:12px;color:var(--muted);line-height:1.7}
+.exp-desc li{list-style:none;padding-left:14px;position:relative;margin-bottom:3px}
+.exp-desc li::before{content:'▸';position:absolute;left:0;color:var(--accent);font-size:10px}
+
+/* education */
+.edu-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 20px;margin-bottom:10px}
+.edu-deg{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px}
+.edu-inst{font-size:12px;color:var(--accent);margin-bottom:2px}
+.edu-yr{font-size:11px;color:var(--muted)}
+
+/* progress bar */
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.prog-label{font-size:12px;color:var(--text);width:110px;flex-shrink:0}
+.prog-track{flex:1;height:5px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.prog-pct{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--accent);width:32px;text-align:right}
+
+/* certifications */
+.cert-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.cert-item:last-child{border-bottom:none}
+.cert-icon{width:32px;height:32px;border-radius:8px;background:rgba(217,164,65,.1);border:1px solid rgba(217,164,65,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cert-icon svg{width:15px;height:15px;stroke:var(--accent)}
+.cert-name{font-size:12px;font-weight:600;color:var(--text)}
+.cert-org{font-size:11px;color:var(--muted)}
+
+/* print */
+@media print{body{background:#fff;color:#000}canvas{display:none}}
+</style>
+</head>
+<body>
+
+
+  <!-- HEADER -->
+  <div class="header">
+ <div class="av"><img src="../../images/monisha.jpeg" alt="Monisha" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;border-radius:50%;"></div>    <div class="hinfo">
+      <div class="name">Monisha <span>K</span></div>
+      <div class="title">Full Stack Intern · IBM SkillsBuild × InternSync · Bengaluru, Karnataka</div>
+      <div class="badges">
+        <span class="badge bg-gold">Full Stack</span>
+        <span class="badge bg-teal">Active</span>
+        <span class="badge bg-green">80% Progress</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTACT -->
+  <div class="section">
+    <div class="sec-title">Contact</div>
+    <div class="contact-grid">
+      <div class="contact-item"><div class="contact-label">Email</div><div class="contact-val">monisha.k@internsync.in</div></div>
+      <div class="contact-item"><div class="contact-label">Phone</div><div class="contact-val">+91 98765 43210</div></div>
+      <div class="contact-item"><div class="contact-label">LinkedIn</div><div class="contact-val">linkedin.com/in/monishak</div></div>
+    </div>
+  </div>
+
+  <!-- OBJECTIVE -->
+  <div class="section">
+    <div class="sec-title">Objective</div>
+    <div class="exp-card">
+      <div class="exp-desc" style="font-style:italic;color:var(--text)">
+        Passionate full-stack developer with a strong foundation in modern web technologies. Eager to build scalable, user-centric applications and contribute meaningfully to product teams. Currently deepening expertise in cloud-integrated architectures and performance optimisation through the IBM SkillsBuild internship program.
+      </div>
+    </div>
+  </div>
+
+  <!-- SKILLS -->
+  <div class="section">
+    <div class="sec-title">Technical Skills</div>
+    <div class="skill-wrap">
+      <span class="skill-pill">HTML5</span><span class="skill-pill">CSS3</span><span class="skill-pill">JavaScript (ES6+)</span>
+      <span class="skill-pill">React.js</span><span class="skill-pill">Node.js</span><span class="skill-pill">Express.js</span>
+      <span class="skill-pill">MySQL</span><span class="skill-pill">MongoDB</span><span class="skill-pill">REST APIs</span>
+      <span class="skill-pill">Git & GitHub</span><span class="skill-pill">Tailwind CSS</span><span class="skill-pill">JWT Auth</span>
+    </div>
+  </div>
+
+  <!-- PROFICIENCY -->
+  <div class="section">
+    <div class="sec-title">Proficiency</div>
+    <div class="exp-card">
+      <div class="prog-row"><div class="prog-label">React.js</div><div class="prog-track"><div class="prog-fill" style="width:88%"></div></div><div class="prog-pct">88%</div></div>
+      <div class="prog-row"><div class="prog-label">Node.js</div><div class="prog-track"><div class="prog-fill" style="width:80%"></div></div><div class="prog-pct">80%</div></div>
+      <div class="prog-row"><div class="prog-label">MySQL</div><div class="prog-track"><div class="prog-fill" style="width:85%"></div></div><div class="prog-pct">85%</div></div>
+      <div class="prog-row"><div class="prog-label">JavaScript</div><div class="prog-track"><div class="prog-fill" style="width:82%"></div></div><div class="prog-pct">82%</div></div>
+      <div class="prog-row"><div class="prog-label">REST APIs</div><div class="prog-track"><div class="prog-fill" style="width:78%"></div></div><div class="prog-pct">78%</div></div>
+    </div>
+  </div>
+
+  <!-- INTERNSHIP -->
+  <div class="section">
+    <div class="sec-title">Internship Experience</div>
+    <div class="exp-card">
+      <div class="exp-top">
+        <div class="exp-role">Full Stack Intern</div>
+        <div class="exp-period">Jan 15 – Apr 15, 2026</div>
+      </div>
+      <div class="exp-company">IBM SkillsBuild × InternSync · Bengaluru</div>
+      <ul class="exp-desc">
+        <li>Developed and optimised relational database schemas in MySQL, improving query performance by 35%.</li>
+        <li>Built reusable React components integrated with Node.js REST APIs for an internal HR management tool.</li>
+        <li>Implemented JWT-based authentication flow reducing unauthorised access incidents to zero.</li>
+        <li>Collaborated with a 4-member team using Git workflow with feature branches and pull-request reviews.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- PROJECTS -->
+  <div class="section">
+    <div class="sec-title">Projects</div>
+    <div class="exp-card">
+      <div class="exp-top">
+        <div class="exp-role">InternSync — Intern Management Platform</div>
+        <div class="exp-period">2026</div>
+      </div>
+      <div class="exp-company">Personal · React · Node.js · MySQL</div>
+      <ul class="exp-desc">
+        <li>Full-stack web application for managing intern workflows, task submissions, and mentor communications.</li>
+        <li>Designed normalised MySQL schema with 12 tables; implemented stored procedures for reporting.</li>
+        <li>Integrated real-time notification system using WebSockets for submission alerts.</li>
+      </ul>
+    </div>
+    <div class="exp-card">
+      <div class="exp-top">
+        <div class="exp-role">E-Commerce REST API</div>
+        <div class="exp-period">2025</div>
+      </div>
+      <div class="exp-company">Academic · Express.js · MongoDB · JWT</div>
+      <ul class="exp-desc">
+        <li>Built a production-ready RESTful API serving 20+ endpoints for a college e-commerce project.</li>
+        <li>Implemented role-based access control, rate limiting, and input validation middleware.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- EDUCATION -->
+  <div class="section">
+    <div class="sec-title">Education</div>
+    <div class="edu-card">
+      <div class="edu-deg">B.E. in Computer Science & Engineering</div>
+      <div class="edu-inst">RV College of Engineering, Bengaluru</div>
+      <div class="edu-yr">2022 – 2026 · CGPA: 8.7 / 10</div>
+    </div>
+  </div>
+
+  <!-- CERTIFICATIONS -->
+  <div class="section">
+    <div class="sec-title">Certifications</div>
+    <div class="exp-card">
+      <div class="cert-item">
+        <div class="cert-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg></div>
+        <div><div class="cert-name">IBM Full Stack Software Developer</div><div class="cert-org">IBM · Coursera · 2025</div></div>
+      </div>
+      <div class="cert-item">
+        <div class="cert-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg></div>
+        <div><div class="cert-name">Meta Front-End Developer Certificate</div><div class="cert-org">Meta · Coursera · 2024</div></div>
+      </div>
+      <div class="cert-item">
+        <div class="cert-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg></div>
+        <div><div class="cert-name">MySQL for Developers</div><div class="cert-org">PlanetScale · 2024</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LANGUAGES -->
+  <div class="section">
+    <div class="sec-title">Languages</div>
+    <div class="skill-wrap">
+      <span class="skill-pill">English (Fluent)</span>
+      <span class="skill-pill">Kannada (Native)</span>
+      <span class="skill-pill">Tamil (Conversational)</span>
+    </div>
+  </div>
+
+</div>
+<script>
+(function () {
+  var returnTo    = sessionStorage.getItem('resumeReturnTo');
+  var returnLabel = sessionStorage.getItem('resumeReturnLabel') || '← Back';
+  if (!returnTo) return;
+
+  var btn = document.createElement('a');
+  btn.href = returnTo;
+  btn.textContent = returnLabel;
+  btn.onclick = function () {
+    sessionStorage.removeItem('resumeReturnTo');
+    sessionStorage.removeItem('resumeReturnLabel');
+  };
+  Object.assign(btn.style, {
+    position:       'fixed',
+    top:            '20px',
+    left:           '20px',
+    zIndex:         '9999',
+    display:        'inline-flex',
+    alignItems:     'center',
+    padding:        '8px 18px',
+    background:     'rgba(15,18,9,0.88)',
+    border:         '1px solid rgba(217,164,65,0.45)',
+    borderRadius:   '30px',
+    color:          '#d9a441',
+    fontFamily:     "'Syne', sans-serif",
+    fontSize:       '12px',
+    fontWeight:     '700',
+    letterSpacing:  '.06em',
+    textDecoration: 'none',
+    backdropFilter: 'blur(14px)',
+    boxShadow:      '0 4px 20px rgba(0,0,0,0.55)',
+    cursor:         'pointer',
+  });
+  btn.onmouseover = function () {
+    btn.style.background = 'rgba(217,164,65,0.18)';
+    btn.style.transform  = 'translateY(-1px)';
+  };
+  btn.onmouseout = function () {
+    btn.style.background = 'rgba(15,18,9,0.88)';
+    btn.style.transform  = 'translateY(0)';
+  };
+  document.body.appendChild(btn);
+})();
+</script>
+</body>
+</html>

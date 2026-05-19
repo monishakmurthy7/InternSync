@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InternSync — Generate Certificate</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#d9a441;--accent2:#f0c060;--bg:#1a1d0f;--card-bg:rgba(255,255,255,0.055);
+  --card-border:rgba(255,255,255,0.13);--text:#f0ede4;--muted:rgba(240,237,228,0.45);
+  --teal:#2dd4bf;--red:#ff6b6b;--sidebar-w:230px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;display:flex;flex-direction:column;}
+#meshCanvas{position:fixed;inset:0;z-index:0;pointer-events:none;}
+.glow{position:fixed;width:380px;height:380px;background:radial-gradient(circle,rgba(217,164,65,.18),transparent 70%);border-radius:50%;pointer-events:none;filter:blur(60px);transform:translate(-50%,-50%);z-index:1;}
+.logo{position:relative;width:48px;height:44px;flex-shrink:0;}
+.logo .letter{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Georgia',serif;font-size:42px;font-weight:bold;line-height:1;user-select:none;}
+.logo .i{color:#fff;z-index:1;}
+.logo .s{color:transparent;z-index:2;background:linear-gradient(120deg,transparent 28%,var(--accent) 50%,transparent 72%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;animation:shimmer 3s infinite linear;}
+@keyframes shimmer{from{background-position:-200% 0}to{background-position:200% 0}}
+nav{position:relative;z-index:20;background:rgba(15,18,8,.85);backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,.07);padding:14px 32px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.nav-left,.nav-right{display:flex;align-items:center;gap:14px;}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#b87333);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#1a1d0f;border:2px solid rgba(217,164,65,.4);cursor:pointer;flex-shrink:0;}
+.nav-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;}
+.btn-logout{padding:7px 18px;border-radius:30px;background:transparent;border:1.5px solid rgba(217,164,65,.4);color:var(--accent);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;letter-spacing:.3px;transition:background .25s,box-shadow .25s,border-color .25s,letter-spacing .25s;}
+.btn-logout:hover{background:rgba(217,164,65,.12);border-color:var(--accent);box-shadow:0 0 14px rgba(217,164,65,.22);letter-spacing:1px;}
+.layout{display:flex;flex:1;position:relative;z-index:5;}
+.sidebar{width:var(--sidebar-w);flex-shrink:0;background:rgba(10,13,6,.6);backdrop-filter:blur(20px);border-right:1px solid rgba(255,255,255,.07);padding:24px 0;display:flex;flex-direction:column;position:sticky;top:0;height:calc(100vh - 65px);overflow-y:auto;}
+.sidebar::-webkit-scrollbar{width:3px;}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(217,164,65,.15);border-radius:4px;}
+.sidebar-section{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(240,237,228,.2);padding:0 20px;margin:18px 0 8px;}
+.sidebar-section:first-child{margin-top:0;}
+.nav-item{display:flex;align-items:center;gap:11px;padding:10px 20px;cursor:pointer;position:relative;color:var(--muted);font-size:13px;font-weight:500;transition:color .2s,background .2s;text-decoration:none;}
+.nav-item svg{width:16px;height:16px;stroke:currentColor;flex-shrink:0;}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.04);}
+.nav-item.active{color:var(--accent);background:rgba(217,164,65,.08);border-right:2px solid var(--accent);}
+.nav-item.active svg{stroke:var(--accent);}
+main{flex:1;padding:32px 36px;overflow-y:auto;}
+.section-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:24px;display:flex;align-items:center;gap:10px;}
+.section-title::after{content:'';flex:1;height:1px;background:rgba(217,164,65,.18);}
+.card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:28px 32px;backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,.35);position:relative;overflow:hidden;opacity:0;transform:translateY(24px);margin-bottom:20px;}
+.card.visible{animation:cardIn .55s cubic-bezier(.22,1,.36,1) forwards;}
+.card::before{content:'';position:absolute;inset:0;border-radius:18px;background:linear-gradient(135deg,rgba(217,164,65,.04),transparent 60%);pointer-events:none;}
+.card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2),transparent);border-radius:18px 18px 0 0;}
+@keyframes cardIn{from{opacity:0;transform:translateY(28px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.card-title{font-family:'Syne',sans-serif;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:20px;display:flex;align-items:center;gap:8px;}
+.badge{background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.25);border-radius:6px;padding:2px 8px;font-size:9px;color:var(--accent);}
+.badge.teal{background:rgba(45,212,191,.1);border-color:rgba(45,212,191,.25);color:var(--teal);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group.full{grid-column:1/-1;}
+label{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:5px;}
+.req{color:var(--accent);}
+.opt{font-size:9px;color:rgba(240,237,228,.22);font-weight:400;letter-spacing:.04em;text-transform:none;font-family:'DM Sans',sans-serif;}
+input,select,textarea{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13.5px;outline:none;transition:border-color .2s,box-shadow .2s,background .2s;width:100%;}
+input:focus,select:focus,textarea:focus{border-color:rgba(217,164,65,.5);background:rgba(255,255,255,.09);box-shadow:0 0 0 3px rgba(217,164,65,.08);}
+input::placeholder,textarea::placeholder{color:rgba(240,237,228,.2);}
+select option{background:#1a1d0f;color:var(--text);}
+textarea{resize:vertical;min-height:68px;line-height:1.55;}
+.divider{display:flex;align-items:center;gap:10px;margin:22px 0 18px;}
+.divider span{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(240,237,228,.2);white-space:nowrap;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.06);}
+.embedded-imgs-row{display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
+.emb-item{flex:1;min-width:160px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.emb-label{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:center;}
+.emb-preview{background:#fff;border-radius:8px;padding:8px;display:flex;align-items:center;justify-content:center;width:100%;height:60px;}
+.emb-preview.qr{height:80px;}
+.emb-preview img{max-height:100%;max-width:100%;object-fit:contain;}
+.emb-badge{background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.25);border-radius:20px;padding:3px 10px;font-family:'Syne',sans-serif;font-size:9px;font-weight:700;color:var(--teal);letter-spacing:.08em;}
+.btn-row{display:flex;gap:12px;margin-top:6px;}
+.btn-generate{flex:1;display:flex;align-items:center;justify-content:center;gap:9px;padding:15px 20px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:12px;color:#1a1d0f;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:transform .2s,box-shadow .2s,filter .2s;box-shadow:0 6px 24px rgba(217,164,65,.3);}
+.btn-generate:hover{transform:translateY(-2px) scale(1.01);box-shadow:0 10px 32px rgba(217,164,65,.42);filter:brightness(1.05);}
+.btn-generate:active{transform:scale(.98);}
+.saved-list{display:flex;flex-direction:column;gap:10px;}
+.cert-row{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:13px 18px;transition:background .2s,border-color .2s;gap:12px;}
+.cert-row:hover{background:rgba(217,164,65,.05);border-color:rgba(217,164,65,.18);}
+.cert-row-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;}
+.cert-row-meta{font-size:12px;color:var(--muted);margin-top:3px;}
+.cert-row-actions{display:flex;gap:8px;flex-shrink:0;}
+.cert-status{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;font-family:'Syne',sans-serif;padding:3px 10px;border-radius:20px;margin-top:4px;}
+.cert-status.pending{background:rgba(217,164,65,.12);border:1px solid rgba(217,164,65,.25);color:var(--accent);}
+.cert-status.issued{background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.25);color:var(--teal);}
+.btn-sm{padding:7px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid rgba(255,255,255,.1);background:transparent;color:var(--muted);transition:all .2s;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent);background:rgba(217,164,65,.07);}
+.btn-sm.danger:hover{border-color:var(--red);color:var(--red);background:rgba(255,107,107,.07);}
+.btn-sm:disabled{opacity:.4;cursor:not-allowed;pointer-events:none;}
+.empty-state{text-align:center;padding:30px 20px;color:var(--muted);font-size:13px;}
+.empty-state svg{width:36px;height:36px;stroke:rgba(217,164,65,.2);margin:0 auto 10px;display:block;}
+.toast{position:fixed;bottom:32px;right:32px;z-index:300;backdrop-filter:blur(20px);border-radius:12px;padding:14px 22px;font-family:'Syne',sans-serif;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;transform:translateY(80px);opacity:0;transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .3s;pointer-events:none;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.3);color:var(--teal);}
+.toast.error{background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.3);color:var(--red);}
+.toast.info{background:rgba(217,164,65,.12);border:1px solid rgba(217,164,65,.3);color:var(--accent);}
+.toast svg{width:16px;height:16px;stroke:currentColor;flex-shrink:0;}
+.particle{position:fixed;border-radius:50%;background:rgba(217,164,65,.14);pointer-events:none;z-index:2;animation:floatUp linear infinite;}
+@keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:.4}50%{transform:translateY(-70px) scale(1.1);opacity:.15}100%{transform:translateY(-140px) scale(.8);opacity:0}}
+.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(10,13,6,.93);backdrop-filter:blur(14px);display:none;align-items:center;justify-content:center;padding:28px;}
+.modal-overlay.open{display:flex;}
+.modal-inner{background:#e8e4dc;border-radius:8px;width:100%;max-width:940px;max-height:92vh;overflow-y:auto;position:relative;box-shadow:0 32px 80px rgba(0,0,0,.65);display:flex;flex-direction:column;align-items:center;padding:36px 20px 24px;}
+.modal-close{position:absolute;top:14px;right:14px;background:#111;border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:background .2s;z-index:5;}
+.modal-close:hover{background:#333;}
+.modal-actions{display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;justify-content:center;}
+.btn-action{padding:12px 28px;border-radius:30px;font-family:'Inter',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:transform .2s,box-shadow .2s;display:flex;align-items:center;gap:8px;}
+.btn-action.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#1a1d0f;box-shadow:0 4px 18px rgba(217,164,65,.3);}
+.btn-action.primary:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(217,164,65,.45);}
+.btn-action.secondary{background:transparent;border:2px solid #aaa;color:#444;}
+.btn-action.secondary:hover{border-color:#666;}
+.btn-action:disabled{opacity:.5;cursor:not-allowed;pointer-events:none;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:14px;height:14px;border:2px solid rgba(45,212,191,.3);border-top-color:var(--teal);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0;}
+.cert-page{background:#fff;width:860px;position:relative;padding:0;box-shadow:0 20px 60px rgba(0,0,0,.18);border-radius:4px;overflow:hidden;flex-shrink:0;font-family:'Inter',sans-serif;}
+.cert-corner{position:absolute;width:0;height:0;}
+.cert-corner-tl{top:0;left:0;border-style:solid;border-width:90px 90px 0 0;border-color:#d9a441 transparent transparent transparent;}
+.cert-corner-br{bottom:0;right:0;border-style:solid;border-width:0 0 90px 90px;border-color:transparent transparent #d9a441 transparent;}
+.cert-meta{position:absolute;top:35px;right:45px;text-align:right;z-index:5;}
+.cert-meta-date{font-size:13px;font-weight:700;color:#111;margin-bottom:2px;}
+.cert-meta-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#888;font-weight:600;}
+.cert-meta-id{font-size:9px;color:#bbb;letter-spacing:.05em;margin-top:4px;}
+.cert-inner{margin:22px;border:2px solid #c8a84b;padding:45px 52px 32px;position:relative;min-height:560px;}
+.cert-logos{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:6px;margin-top:10px;}
+.cert-dot{width:5px;height:5px;border-radius:50%;background:#bbb;}
+.cert-is-wrap{position:relative;width:42px;height:38px;flex-shrink:0;}
+.cert-is-wrap .letter{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Georgia',serif;font-size:36px;font-weight:bold;line-height:1;}
+.cert-is-wrap .i-l{color:#111;z-index:1;}
+.cert-is-wrap .s-l{color:transparent;z-index:2;background:linear-gradient(120deg,transparent 28%,#d9a441 50%,transparent 72%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;animation:shimIS 3s infinite linear;}
+@keyframes shimIS{from{background-position:-200% 0}to{background-position:200% 0}}
+.cert-sb-tag{text-align:center;margin-bottom:4px;font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:#888;}
+.cert-heading{font-family:'Playfair Display',serif;font-size:62px;font-weight:800;text-align:center;line-height:1;color:#111;letter-spacing:.02em;margin-bottom:4px;}
+.cert-subheading{text-align:center;font-size:17px;font-weight:400;letter-spacing:.22em;text-transform:uppercase;color:#555;margin-bottom:20px;}
+.cert-band{background:#111;color:#fff;text-align:center;padding:7px 28px;font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;margin:0 auto 22px;border-radius:2px;display:flex;justify-content:center;width:fit-content;}
+.cert-name{font-family:'Playfair Display',serif;font-size:42px;font-weight:700;text-align:center;color:#111;margin-bottom:16px;}
+.cert-body{text-align:center;font-size:14px;line-height:1.75;color:#444;max-width:580px;margin:0 auto 28px;}
+.cert-line{width:100%;height:1px;background:linear-gradient(90deg,transparent,#c8a84b,transparent);margin-bottom:30px;}
+.cert-footer{display:flex;align-items:flex-start;justify-content:space-between;}
+.cert-sig{width:200px;display:flex;flex-direction:column;align-items:center;text-align:center;}
+.cert-sig-line{border-bottom:1.5px solid #ddd;width:100%;height:60px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:8px;}
+.cert-sig-img{max-height:55px;max-width:180px;object-fit:contain;}
+.cert-sig-name{font-size:13px;font-weight:700;color:#111;}
+.cert-sig-role{font-size:10px;color:#666;margin-top:1px;line-height:1.3;}
+.cert-qr{display:flex;flex-direction:column;align-items:center;justify-content:center;padding-top:10px;}
+.cert-qr-img{width:75px;height:75px;object-fit:contain;}
+.cert-qr-lbl{font-size:8px;color:#999;text-transform:uppercase;margin-top:6px;letter-spacing:1px;}
+.img-placeholder{background:#f5f5f5;border:1.5px dashed #ddd;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:9px;font-family:'Inter',sans-serif;text-align:center;}
+.sig-placeholder{width:160px;height:48px;}
+.qr-placeholder{width:75px;height:75px;padding:6px;}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+
+/* Search bar for history */
+.history-controls{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.history-search{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;}
+.history-search:focus{border-color:rgba(217,164,65,.5);box-shadow:0 0 0 3px rgba(217,164,65,.08);}
+.history-search::placeholder{color:rgba(240,237,228,.2);}
+.pagination{display:flex;align-items:center;gap:8px;margin-top:14px;justify-content:center;}
+.page-btn{padding:6px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid rgba(255,255,255,.1);background:transparent;color:var(--muted);transition:all .2s;}
+.page-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);background:rgba(217,164,65,.07);}
+.page-btn:disabled{opacity:.35;cursor:not-allowed;}
+.page-info{font-size:12px;color:var(--muted);padding:0 6px;}
+.loading-row{text-align:center;padding:20px;color:var(--muted);font-size:13px;display:flex;align-items:center;justify-content:center;gap:10px;}
+</style>
+</head>
+<body>
+<canvas id="meshCanvas"></canvas>
+<div class="glow" id="glow"></div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Overview</div>
+    <a class="nav-item" href="mentor-dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" href="mentor-profile.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      My Profile
+    </a>
+    <a class="nav-item" href="mentor-interns.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      My Interns
+    </a>
+    <a class="nav-item" href="mentor-attendance.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 16 11 18 15 14"/></svg>
+      Attendance
+    </a>
+    <div class="sidebar-section">Tasks</div>
+    <a class="nav-item" href="mentor-assign.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Assign Tasks
+    </a>
+    <a class="nav-item" href="mentor-submissions.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Submissions
+    </a>
+    <a class="nav-item" href="mentor-feedback.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Give Feedback
+    </a>
+    <div class="sidebar-section">Manage</div>
+    <a class="nav-item" href="mentor-leave.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      Leave Requests
+    </a>
+    <a class="nav-item" href="mentor-content.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+      Manage Content
+    </a>
+    <a class="nav-item active" href="mentor-certificate.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+      Certificates
+    </a>
+    <div class="sidebar-section">Communication</div>
+    <a class="nav-item" href="mentor-pvtchat.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>
+      Chat with Interns
+    </a>
+  </aside>
+
+  <main>
+    <div class="section-title">Issue Certificate</div>
+
+    <div class="card" id="c1">
+      <div class="card-title">Certificate Details <span class="badge">Intern Info</span></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Intern Full Name <span class="req">*</span></label>
+          <input type="text" id="internName" placeholder="e.g. Monisha K" required>
+        </div>
+        <div class="form-group">
+          <label>Intern ID <span class="req">*</span></label>
+          <input type="text" id="internId" placeholder="e.g. 123478" required>
+        </div>
+        <div class="form-group">
+          <label>Domain / Role <span class="req">*</span></label>
+          <select id="internDomain" required>
+            <option value="">Select domain...</option>
+            <option>Full Stack Web Development</option>
+            <option>Frontend Development</option>
+            <option>Backend Development</option>
+            <option>Data Science &amp; Analytics</option>
+            <option>Machine Learning &amp; AI</option>
+            <option>UI/UX Design</option>
+            <option>Cloud Computing</option>
+            <option>Cybersecurity</option>
+            <option>Mobile App Development</option>
+            <option>DevOps &amp; Infrastructure</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date of Issue <span class="req">*</span></label>
+          <input type="date" id="issueDate" required>
+        </div>
+        <div class="form-group">
+          <label>Start Date <span class="req">*</span></label>
+          <input type="date" id="startDate" required>
+        </div>
+        <div class="form-group">
+          <label>End Date <span class="req">*</span></label>
+          <input type="date" id="endDate" required>
+        </div>
+        <div class="form-group full">
+          <label>Custom Achievement Note <span class="opt">(optional)</span></label>
+          <textarea id="note" placeholder="Add a personalized note...">demonstrating exceptional dedication, technical growth, and professional conduct throughout the program.</textarea>
+        </div>
+      </div>
+
+      <div class="divider"><span>Signatures &amp; QR Code</span></div>
+      <div class="embedded-imgs-row">
+        <div class="emb-item">
+          <div class="emb-label">Signature 1 — Raj Sharma</div>
+          <div class="emb-preview"><img id="prevSig1" alt="Sig1"/></div>
+          <span class="emb-badge">&#10003; Embedded</span>
+        </div>
+        <div class="emb-item">
+          <div class="emb-label">Signature 2 — Justina Saintil</div>
+          <div class="emb-preview"><img id="prevSig2" alt="Sig2"/></div>
+          <span class="emb-badge">&#10003; Embedded</span>
+        </div>
+        <div class="emb-item">
+          <div class="emb-label">QR Code — Verification</div>
+          <div class="emb-preview qr" id="qrPreviewBox">
+    <img src="images/qrcode_certificate.png" alt="QR Code" style="max-height:100%;max-width:100%;object-fit:contain;" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=\'font-size:10px;color:#aaa;text-align:center;\'>QR will be added</span>'"/>
+</div>
+          <span class="emb-badge" id="qrStatusBadge">&#10003; Default QR</span>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-generate" onclick="generate()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1d0f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+          Preview Certificate
+        </button>
+      </div>
+    </div>
+
+    <div class="card" id="c2">
+      <div class="card-title">
+        Issued Certificates
+        <span class="badge teal" id="countBadge">0 issued</span>
+      </div>
+
+      <!-- Search + refresh -->
+      <div class="history-controls">
+        <input
+          class="history-search"
+          type="text"
+          id="searchInput"
+          placeholder="Search by name, ID, or domain..."
+          oninput="debounceSearch()"
+        />
+        <button class="btn-sm" onclick="loadCertificates(1)" title="Refresh">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
+      </div>
+
+      <div class="saved-list" id="savedList">
+        <div class="loading-row" id="loadingRow">
+          <div class="spinner"></div> Loading certificates...
+        </div>
+      </div>
+
+      <div class="pagination" id="paginationRow" style="display:none;">
+        <button class="page-btn" id="prevPage" onclick="changePage(-1)">&#8592; Prev</button>
+        <span class="page-info" id="pageInfo">Page 1 of 1</span>
+        <button class="page-btn" id="nextPage" onclick="changePage(1)">Next &#8594;</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-inner">
+    <button class="modal-close" onclick="closeModal()">&#10005;</button>
+    <div class="cert-page" id="certPage">
+      <div class="cert-corner cert-corner-tl"></div>
+      <div class="cert-corner cert-corner-br"></div>
+      <div class="cert-meta">
+        <div class="cert-meta-date" id="cDate"></div>
+        <div class="cert-meta-label">Date of Issue</div>
+        <div class="cert-meta-id" id="cId"></div>
+      </div>
+      <div class="cert-inner">
+        <div class="cert-logos">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/IBM_logo.svg" alt="IBM" height="45"/>
+          <div class="cert-dot"></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="cert-is-wrap"><span class="letter i-l">I</span><span class="letter s-l">S</span></div>
+            <span style="font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:#555;letter-spacing:.08em;text-transform:uppercase;">InternSync</span>
+          </div>
+        </div>
+        <div class="cert-sb-tag">SkillsBuild</div>
+        <div class="cert-heading">CERTIFICATE</div>
+        <div class="cert-subheading">Of Achievement</div>
+        <div class="cert-band">This Certificate is Proudly Presented to</div>
+        <div class="cert-name" id="cName"></div>
+        <div class="cert-body">
+          Was an active Intern in the IBM SkillsBuild &amp; InternSync Virtual Internship
+          Program in <strong id="cDomain"></strong> from <strong id="cStart"></strong>
+          to <strong id="cEnd"></strong>, <span id="cNote"></span>
+        </div>
+        <div class="cert-line"></div>
+        <div class="cert-footer">
+          <div class="cert-sig">
+            <div class="cert-sig-line" id="sig1Box"></div>
+            <div class="cert-sig-name">Raj Sharma</div>
+            <div class="cert-sig-role">Program Lead<br>IBM SkillsBuild &times; InternSync</div>
+          </div>
+          <div class="cert-qr" id="qrBox"></div>
+          <div class="cert-sig">
+            <div class="cert-sig-line" id="sig2Box"></div>
+            <div class="cert-sig-name">Justina Saintil</div>
+            <div class="cert-sig-role">Managing Director<br>IBM SkillsBuild</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions" id="modalActs">
+      <button class="btn-action primary" id="confirmBtn" onclick="confirmIssue()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a1d0f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Confirm &amp; Save
+      </button>
+      <button class="btn-action secondary" onclick="closeModal()">&#10005; Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toastMsg">Done</span>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────
+const API_BASE = 'http://localhost:3000/api';
+
+// ─── LOCAL IMAGE PATHS (relative to this HTML file) ──────────────────────
+// Files must exist at: D:\INTERNSYNC\frontend\images\
+const DEFAULT_SIG1    = '../images/raj_signature.png';
+const DEFAULT_SIG2    = '../images/justina_signature.png';
+const DEFAULT_QR_PATH = '../images/qrcode_certificate.png';
+
+
+// ─── STATE ────────────────────────────────────────────────────────────────
+let currentPage = 1;
+let totalPages  = 1;
+let searchQuery = '';
+let searchTimer = null;
+let isPreviewMode = false;
+
+// ─── INIT ─────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('issueDate').value = new Date().toISOString().split('T')[0];
+
+  // Show signature previews in the form card using local image paths
+  document.getElementById('prevSig1').src = DEFAULT_SIG1;
+  document.getElementById('prevSig1').onerror = () => document.getElementById('prevSig1').style.display='none';
+  document.getElementById('prevSig2').src = DEFAULT_SIG2;
+  document.getElementById('prevSig2').onerror = () => document.getElementById('prevSig2').style.display='none';
+
+  loadCertificates(1);
+  initParticles();
+  initCardTilt();
+
+  setTimeout(() => document.getElementById('c1')?.classList.add('visible'), 100);
+  setTimeout(() => document.getElementById('c2')?.classList.add('visible'), 230);
+
+  document.getElementById('modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal')) closeModal();
+  });
+});
+
+// ─── FORM VALIDATION ──────────────────────────────────────────────────────
+function validateForm() {
+  const required = ['internName','internId','internDomain','issueDate','startDate','endDate'];
+  let valid = true;
+  required.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el.value?.trim()) {
+      el.style.borderColor  = 'var(--red)';
+      el.style.boxShadow    = '0 0 0 3px rgba(255,107,107,.1)';
+      el.style.animation    = 'shake .4s ease';
+      valid = false;
+      setTimeout(() => {
+        el.style.borderColor = '';
+        el.style.boxShadow   = '';
+        el.style.animation   = '';
+      }, 1400);
+    }
+  });
+  return valid;
+}
+
+// ─── GENERATE (PREVIEW before saving) ────────────────────────────────────
+function generate() {
+  if (!validateForm()) {
+    showToast('Please fill all required fields', 'error');
+    return;
+  }
+
+  isPreviewMode = false;
+
+  document.getElementById('cDate').textContent  = fmtDate(document.getElementById('issueDate').value);
+  document.getElementById('cId').textContent    = `ID: IS-IBM-2026-${document.getElementById('internId').value}`;
+  document.getElementById('cName').textContent  = document.getElementById('internName').value;
+  document.getElementById('cDomain').textContent = document.getElementById('internDomain').value;
+  document.getElementById('cStart').textContent = fmtDate(document.getElementById('startDate').value);
+  document.getElementById('cEnd').textContent   = fmtDate(document.getElementById('endDate').value);
+  document.getElementById('cNote').textContent  = document.getElementById('note').value;
+
+  // Display signatures using the embedded base64 (display only, not sent to backend)
+  setFooterSig('sig1Box', DEFAULT_SIG1 || null);
+  setFooterSig('sig2Box', DEFAULT_SIG2 || null);
+
+  // Show default QR code from local path
+  
+  setFooterQr('qrBox', DEFAULT_QR_PATH, 'Verify Authenticity');
+
+  // Show confirm button
+  document.getElementById('modalActs').style.display = 'flex';
+  const btn = document.getElementById('confirmBtn');
+  btn.style.display = '';
+  btn.disabled = false;
+  btn.innerHTML = `
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a1d0f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    Confirm &amp; Save
+  `;
+
+  document.getElementById('modal').classList.add('open');
+}
+
+// ─── CONFIRM & SAVE ───────────────────────────────────────────────────────
+// FIX: Only send plain text/date values — never base64 image data as path strings.
+// The backend stores its own server-side signature file references separately.
+async function confirmIssue() {
+  const btn = document.getElementById('confirmBtn');
+
+  btn.disabled = true;
+  btn.innerHTML = `<div class="spinner"></div> Saving...`;
+  showToast('Saving certificate...', 'info');
+
+  // Only send actual data fields — NO signature base64 or local file paths
+  const payload = {
+    internName: document.getElementById('internName').value.trim(),
+    internId:   document.getElementById('internId').value.trim(),
+    domain:     document.getElementById('internDomain').value,
+    issueDate:  document.getElementById('issueDate').value,
+    startDate:  document.getElementById('startDate').value,
+    endDate:    document.getElementById('endDate').value,
+    note:       document.getElementById('note').value.trim()
+    // signature1 and signature2 are intentionally omitted here.
+    // The backend should already have the server-side signature paths configured.
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/certificates`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload)
+    });
+
+    const result = await res.json();
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.message || `Server error ${res.status}`);
+    }
+
+    const certId = result.certificate_id;
+
+    // Update meta ID with real cert ID
+    document.getElementById('cId').textContent =
+      `ID: IS-IBM-2026-${payload.internId} • Cert #${certId}`;
+
+    // If backend returned a QR path, update the QR display
+    if (result.qr_code_path) {
+      const qrUrl = `${API_BASE.replace('/api','')}${result.qr_code_path}`;
+      setFooterQr('qrBox', qrUrl, '');
+    }
+    // Otherwise keep showing the default QR already rendered
+
+    showToast('Certificate issued successfully!', 'success');
+
+    btn.innerHTML = `✓ Saved`;
+    btn.style.opacity = '0.6';
+    btn.style.cursor  = 'default';
+
+    resetForm();
+    loadCertificates(1);
+
+  } catch (err) {
+    console.error('confirmIssue error:', err);
+    showToast('Save failed: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = `
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a1d0f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Confirm &amp; Save
+    `;
+  }
+}
+
+// ─── LOAD CERTIFICATE HISTORY ─────────────────────────────────────────────
+async function loadCertificates(page = 1) {
+  currentPage = page;
+  const list   = document.getElementById('savedList');
+  const pagRow = document.getElementById('paginationRow');
+
+  list.innerHTML = '';
+  const loadEl = document.createElement('div');
+  loadEl.className = 'loading-row';
+  loadEl.innerHTML = '<div class="spinner"></div> Loading certificates...';
+  list.appendChild(loadEl);
+  pagRow.style.display = 'none';
+
+  try {
+    const search = searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : '';
+    const res    = await fetch(`${API_BASE}/certificates?page=${page}&limit=8${search}`);
+
+    if (!res.ok) throw new Error(`Server error ${res.status}`);
+    const result = await res.json();
+
+    list.innerHTML = '';
+
+    if (!result.success || !result.data?.length) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+          ${searchQuery ? 'No certificates match your search.' : 'No certificates issued yet.'}
+        </div>`;
+      document.getElementById('countBadge').textContent = '0 issued';
+      return;
+    }
+
+    const total = result.pagination?.total || result.data.length;
+    document.getElementById('countBadge').textContent = `${total} issued`;
+
+    result.data.forEach(cert => {
+      const row = document.createElement('div');
+      row.className = 'cert-row';
+
+      row.innerHTML = `
+        <div style="flex:1;min-width:0;">
+          <div class="cert-row-name">${escapeHtml(cert.internName)}</div>
+          <div class="cert-row-meta">
+            ${escapeHtml(cert.domain)} &bull; Issued: ${fmtDate(cert.issueDate)}
+            &bull; ID: ${escapeHtml(cert.internId)}
+          </div>
+          <div class="cert-row-meta" style="margin-top:2px;">
+            ${fmtDate(cert.startDate)} → ${fmtDate(cert.endDate)}
+          </div>
+          <span class="cert-status issued">&#10003; Issued</span>
+        </div>
+        <div class="cert-row-actions">
+          <button class="btn-sm danger" onclick="deleteCertificate(${cert.id}, this)">Delete</button>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+
+    // Pagination
+    totalPages = result.pagination?.pages || 1;
+    if (totalPages > 1) {
+      pagRow.style.display = 'flex';
+      document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages}`;
+      document.getElementById('prevPage').disabled    = currentPage <= 1;
+      document.getElementById('nextPage').disabled    = currentPage >= totalPages;
+    } else {
+      pagRow.style.display = 'none';
+    }
+
+  } catch (err) {
+    console.error('loadCertificates error:', err);
+    list.innerHTML = `<div class="empty-state" style="color:var(--red);">Failed to load: ${escapeHtml(err.message)}</div>`;
+    showToast('Failed to load certificates', 'error');
+  }
+}
+
+// ─── PAGINATION ───────────────────────────────────────────────────────────
+function changePage(delta) {
+  const next = currentPage + delta;
+  if (next < 1 || next > totalPages) return;
+  loadCertificates(next);
+}
+
+// ─── SEARCH WITH DEBOUNCE ─────────────────────────────────────────────────
+function debounceSearch() {
+  clearTimeout(searchTimer);
+  searchQuery = document.getElementById('searchInput').value.trim();
+  searchTimer = setTimeout(() => loadCertificates(1), 400);
+}
+
+// ─── DELETE CERTIFICATE ───────────────────────────────────────────────────
+async function deleteCertificate(id, btn) {
+  if (!confirm('Delete this certificate permanently? This cannot be undone.')) return;
+
+  btn.disabled = true;
+  btn.textContent = '...';
+
+  try {
+    const res    = await fetch(`${API_BASE}/certificates/${id}`, { method:'DELETE' });
+    const result = await res.json();
+
+    if (!res.ok || !result.success) throw new Error(result.message || `Error ${res.status}`);
+    showToast('Certificate deleted', 'success');
+    loadCertificates(currentPage);
+  } catch (err) {
+    showToast('Delete failed: ' + err.message, 'error');
+    btn.disabled    = false;
+    btn.textContent = 'Delete';
+  }
+}
+
+// ─── RESET FORM ───────────────────────────────────────────────────────────
+function resetForm() {
+  document.getElementById('internName').value   = '';
+  document.getElementById('internId').value     = '';
+  document.getElementById('internDomain').value = '';
+  document.getElementById('startDate').value    = '';
+  document.getElementById('endDate').value      = '';
+  document.getElementById('note').value =
+    'demonstrating exceptional dedication, technical growth, and professional conduct throughout the program.';
+  document.getElementById('issueDate').value = new Date().toISOString().split('T')[0];
+}
+
+// ─── CLOSE MODAL ──────────────────────────────────────────────────────────
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  const btn = document.getElementById('confirmBtn');
+  btn.disabled      = false;
+  btn.style.opacity = '';
+  btn.style.cursor  = '';
+  btn.style.display = '';
+  btn.innerHTML = `
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a1d0f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    Confirm &amp; Save
+  `;
+}
+
+// ─── FOOTER RENDERERS ─────────────────────────────────────────────────────
+function setFooterSig(boxId, url) {
+  const box = document.getElementById(boxId);
+  box.innerHTML = '';
+  if (url) {
+    const img = document.createElement('img');
+    img.className = 'cert-sig-img';
+    img.src       = url;
+    img.onerror   = () => { box.innerHTML = `<div class="img-placeholder sig-placeholder">Signature</div>`; };
+    box.appendChild(img);
+  } else {
+    box.innerHTML = `<div class="img-placeholder sig-placeholder">Signature</div>`;
+  }
+}
+
+// Shows a real image (local or remote URL) as QR, or a placeholder SVG
+function setFooterQr(boxId, url, label) {
+  const box = document.getElementById(boxId);
+  box.innerHTML = '';
+
+  if (url) {
+    const img = document.createElement('img');
+    img.className = 'cert-qr-img';
+    img.src       = url;
+    img.alt       = 'QR Code';
+    img.onerror   = () => {
+      // If local QR fails to load, show a clean placeholder
+      box.innerHTML = qrFallbackSVG();
+    };
+    box.appendChild(img);
+
+    const lbl = document.createElement('div');
+    lbl.className   = 'cert-qr-lbl';
+    lbl.textContent = label || 'Verify Authenticity';
+    box.appendChild(lbl);
+  } else {
+    box.innerHTML = qrFallbackSVG();
+  }
+}
+
+function qrFallbackSVG() {
+  return `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <svg width="60" height="60" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="2" width="16" height="16" rx="2" stroke="#ccc" stroke-width="2" fill="none"/>
+        <rect x="5" y="5" width="10" height="10" rx="1" fill="#ddd"/>
+        <rect x="22" y="2" width="16" height="16" rx="2" stroke="#ccc" stroke-width="2" fill="none"/>
+        <rect x="25" y="5" width="10" height="10" rx="1" fill="#ddd"/>
+        <rect x="2" y="22" width="16" height="16" rx="2" stroke="#ccc" stroke-width="2" fill="none"/>
+        <rect x="5" y="25" width="10" height="10" rx="1" fill="#ddd"/>
+        <rect x="22" y="22" width="4" height="4" fill="#ddd"/>
+        <rect x="28" y="22" width="4" height="4" fill="#ddd"/>
+        <rect x="34" y="22" width="4" height="4" fill="#ddd"/>
+        <rect x="22" y="28" width="4" height="4" fill="#ddd"/>
+        <rect x="28" y="28" width="10" height="10" fill="#ddd"/>
+      </svg>
+      <span style="font-size:8px;color:#bbb;">QR unavailable</span>
+    </div>
+    <div class="cert-qr-lbl">Verify Authenticity</div>
+  `;
+}
+
+// ─── UTILITIES ────────────────────────────────────────────────────────────
+function fmtDate(v) {
+  if (!v) return '—';
+  const d   = new Date(v + 'T00:00:00');
+  if (isNaN(d)) return v;
+  const day = d.getDate();
+  const mod = day % 100;
+  const sfx = (mod >= 11 && mod <= 13) ? 'th' : ['th','st','nd','rd'][day % 10] || 'th';
+  return `${day}${sfx} ${d.toLocaleString('en-GB',{month:'long'})} ${d.getFullYear()}`;
+}
+
+function escapeHtml(t) {
+  if (!t) return '';
+  const d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+let toastTimer;
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3400);
+}
+
+// ─── PARTICLES ────────────────────────────────────────────────────────────
+function initParticles() {
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const sz = 2 + Math.random() * 4;
+    Object.assign(p.style, {
+      width:             sz + 'px',
+      height:            sz + 'px',
+      left:              Math.random() * 100 + 'vw',
+      top:               (60 + Math.random() * 40) + 'vh',
+      animationDuration: (9 + Math.random() * 14) + 's',
+      animationDelay:    Math.random() * 10 + 's'
+    });
+    document.body.appendChild(p);
+  }
+}
+
+// ─── CARD TILT ────────────────────────────────────────────────────────────
+function initCardTilt() {
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('mousemove', e => {
+      const r  = card.getBoundingClientRect();
+      const dx = (e.clientX - r.left  - r.width  / 2) / (r.width  / 2);
+      const dy = (e.clientY - r.top   - r.height / 2) / (r.height / 2);
+      card.style.transform = `perspective(800px) rotateY(${dx*5}deg) rotateX(${-dy*5}deg) translateY(-4px) scale(1.01)`;
+      card.style.boxShadow = `${-dx*10}px ${-dy*10}px 36px rgba(217,164,65,.14),0 16px 48px rgba(0,0,0,.4)`;
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transition = 'transform .5s cubic-bezier(.34,1.56,.64,1),box-shadow .4s ease';
+      card.style.transform  = '';
+      card.style.boxShadow  = '0 8px 32px rgba(0,0,0,.35)';
+      setTimeout(() => card.style.transition = '', 500);
+    });
+    card.addEventListener('mouseenter', () => {
+      card.style.transition = 'transform .12s ease,box-shadow .12s ease';
+    });
+  });
+}
+</script>
+</body>
+</html>

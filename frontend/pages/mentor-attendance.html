@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InternSync — Attendance</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --accent: #d9a441; --accent2: #f0c060;
+  --bg: #0f1209;
+  --card-bg: rgba(255,255,255,0.055);
+  --card-border: rgba(255,255,255,0.13);
+  --text: #f0ede4; --muted: rgba(240,237,228,0.45);
+  --green: #22c55e; --green2: #4ade80; --green-glow: rgba(34,197,94,0.35);
+  --yellow: #eab308; --yellow2: #fde047; --yellow-glow: rgba(234,179,8,0.35);
+  --red: #ef4444; --red2: #ff6b6b; --red-glow: rgba(239,68,68,0.35);
+  --teal: #2dd4bf;
+  --sidebar-w: 240px;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; display:flex; flex-direction:column; }
+
+#meshCanvas { position:fixed; inset:0; z-index:0; pointer-events:none; }
+.glow-cursor { position:fixed; width:480px; height:480px; background:radial-gradient(circle,rgba(217,164,65,.13),transparent 70%); border-radius:50%; pointer-events:none; filter:blur(80px); transform:translate(-50%,-50%); z-index:1; transition:left .08s,top .08s; }
+
+.layout { display:flex; flex:1; position:relative; z-index:5; }
+
+.sidebar { width:var(--sidebar-w); flex-shrink:0; background:rgba(8,10,4,.7); backdrop-filter:blur(20px); border-right:1px solid rgba(255,255,255,.07); padding:24px 0; display:flex; flex-direction:column; position:sticky; top:0; height:calc(100vh - 65px); overflow-y:auto; }
+.sidebar::-webkit-scrollbar { width:3px; }
+.sidebar::-webkit-scrollbar-thumb { background:rgba(217,164,65,.15); border-radius:4px; }
+.sb-section { font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(240,237,228,.2); padding:0 20px; margin:18px 0 8px; }
+.nav-item { display:flex; align-items:center; gap:11px; padding:10px 20px; cursor:pointer; color:var(--muted); font-size:13px; font-weight:500; transition:color .2s,background .2s; text-decoration:none; position:relative; }
+.nav-item svg { width:16px; height:16px; stroke:currentColor; flex-shrink:0; }
+.nav-item:hover { color:var(--text); background:rgba(255,255,255,.04); }
+.nav-item.active { color:var(--accent); background:rgba(217,164,65,.08); border-right:2px solid var(--accent); }
+.nav-item.active svg { stroke:var(--accent); }
+.nav-badge { margin-left:auto; background:var(--red2); color:#fff; font-size:9px; font-family:'Syne',sans-serif; font-weight:700; border-radius:10px; padding:2px 6px; }
+
+main { flex:1; padding:28px 32px; overflow-y:auto; overflow-x:visible; min-width:0; }
+
+.page-title { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; margin-bottom:4px; }
+.page-title span { color:var(--accent); }
+.page-sub { font-size:13px; color:var(--muted); margin-bottom:28px; }
+
+.section-title { font-family:'Syne',sans-serif; font-size:12px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:18px; display:flex; align-items:center; gap:10px; }
+.section-title::after { content:''; flex:1; height:1px; background:rgba(217,164,65,.18); }
+
+/* ── LEGEND ── */
+.legend-bar { display:flex; gap:14px; margin-bottom:26px; flex-wrap:wrap; }
+.legend-pill { display:flex; align-items:center; gap:9px; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.09); border-radius:40px; padding:8px 18px; backdrop-filter:blur(12px); transition:transform .2s,box-shadow .2s; cursor:default; }
+.legend-pill:hover { transform:translateY(-2px); }
+.legend-pill.lp-green { border-color:rgba(34,197,94,.25); box-shadow:0 0 20px rgba(34,197,94,.08); }
+.legend-pill.lp-yellow { border-color:rgba(234,179,8,.25); box-shadow:0 0 20px rgba(234,179,8,.08); }
+.legend-pill.lp-red { border-color:rgba(239,68,68,.25); box-shadow:0 0 20px rgba(239,68,68,.08); }
+.legend-pill:hover.lp-green { box-shadow:0 4px 28px rgba(34,197,94,.2); }
+.legend-pill:hover.lp-yellow { box-shadow:0 4px 28px rgba(234,179,8,.2); }
+.legend-pill:hover.lp-red { box-shadow:0 4px 28px rgba(239,68,68,.2); }
+.lp-orb { width:11px; height:11px; border-radius:50%; flex-shrink:0; position:relative; }
+.lp-orb::after { content:''; position:absolute; inset:-4px; border-radius:50%; animation:orbPulse 2s ease-in-out infinite; }
+.lp-green .lp-orb { background:var(--green); }
+.lp-green .lp-orb::after { background:rgba(34,197,94,.3); animation-delay:0s; }
+.lp-yellow .lp-orb { background:var(--yellow); }
+.lp-yellow .lp-orb::after { background:rgba(234,179,8,.3); animation-delay:.4s; }
+.lp-red .lp-orb { background:var(--red); }
+.lp-red .lp-orb::after { background:rgba(239,68,68,.3); animation-delay:.8s; }
+@keyframes orbPulse { 0%,100%{transform:scale(1);opacity:.8} 50%{transform:scale(2);opacity:0} }
+.lp-label { font-family:'Syne',sans-serif; font-size:11px; font-weight:700; letter-spacing:.05em; }
+.lp-green .lp-label { color:var(--green2); }
+.lp-yellow .lp-label { color:var(--yellow2); }
+.lp-red .lp-label { color:var(--red2); }
+.lp-desc { font-size:11px; color:var(--muted); }
+.lp-count { font-family:'Syne',sans-serif; font-size:13px; font-weight:800; margin-left:4px; }
+.lp-green .lp-count { color:var(--green2); }
+.lp-yellow .lp-count { color:var(--yellow2); }
+.lp-red .lp-count { color:var(--red2); }
+
+/* ── STATS ── */
+.stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:28px; }
+.stat-tile { border-radius:16px; padding:18px 20px; backdrop-filter:blur(20px); position:relative; overflow:hidden; border:1px solid; cursor:default; transition:transform .25s,box-shadow .25s; }
+.stat-tile:hover { transform:translateY(-4px); }
+.stat-tile::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,.04),transparent 60%); pointer-events:none; }
+.st-green { background:rgba(34,197,94,.07); border-color:rgba(34,197,94,.2); }
+.st-green:hover { box-shadow:0 12px 36px rgba(34,197,94,.2); }
+.st-yellow { background:rgba(234,179,8,.07); border-color:rgba(234,179,8,.2); }
+.st-yellow:hover { box-shadow:0 12px 36px rgba(234,179,8,.2); }
+.st-red { background:rgba(239,68,68,.07); border-color:rgba(239,68,68,.2); }
+.st-red:hover { box-shadow:0 12px 36px rgba(239,68,68,.2); }
+.stat-n { font-family:'Syne',sans-serif; font-size:38px; font-weight:800; line-height:1; margin-bottom:4px; }
+.st-green .stat-n { color:var(--green2); }
+.st-yellow .stat-n { color:var(--yellow2); }
+.st-red .stat-n { color:var(--red2); }
+.stat-l { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.09em; }
+.stat-bar { height:3px; border-radius:2px; margin-top:12px; }
+.st-green .stat-bar { background:linear-gradient(90deg,var(--green),transparent); }
+.st-yellow .stat-bar { background:linear-gradient(90deg,var(--yellow),transparent); }
+.st-red .stat-bar { background:linear-gradient(90deg,var(--red),transparent); }
+.stat-tile { overflow:visible !important; }
+.stat-tooltip { position:absolute; top:calc(100% + 10px); left:0; background:#141810; border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:12px 14px; z-index:500; pointer-events:none; opacity:0; transform:translateY(6px) scale(.97); transition:opacity .2s,transform .2s; box-shadow:0 16px 40px rgba(0,0,0,.7); min-width:190px; white-space:nowrap; }
+.stat-tile:hover .stat-tooltip { opacity:1; transform:translateY(0) scale(1); }
+.st-green .stat-tooltip { border-color:rgba(34,197,94,.3); }
+.st-yellow .stat-tooltip { border-color:rgba(234,179,8,.3); }
+.st-red .stat-tooltip { border-color:rgba(239,68,68,.3); }
+.stt-label { font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; margin-bottom:8px; }
+.st-green .stt-label { color:var(--green2); }
+.st-yellow .stt-label { color:var(--yellow2); }
+.st-red .stt-label { color:var(--red2); }
+.stt-row { display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:12px; color:var(--text); }
+.stt-row:last-child { border-bottom:none; padding-bottom:0; }
+.stt-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.stt-role { font-size:10px; color:var(--muted); margin-left:auto; padding-left:8px; }
+
+/* ── DATE SELECTOR ── */
+.date-row { display:flex; align-items:center; gap:12px; margin-bottom:22px; flex-wrap:wrap; }
+.date-btn { width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,.055); border:1px solid rgba(255,255,255,.1); color:var(--muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s; flex-shrink:0; }
+.date-btn:hover:not(:disabled) { background:rgba(217,164,65,.1); border-color:rgba(217,164,65,.35); color:var(--accent); }
+.date-btn:disabled { opacity:.2; cursor:not-allowed; }
+.date-display { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:8px 20px; min-width:200px; text-align:center; letter-spacing:.04em; }
+.date-today { padding:7px 16px; border-radius:20px; background:rgba(217,164,65,.1); border:1px solid rgba(217,164,65,.25); color:var(--accent); font-family:'Syne',sans-serif; font-size:11px; font-weight:700; cursor:pointer; letter-spacing:.06em; transition:all .2s; }
+.date-today:hover { background:rgba(217,164,65,.2); }
+
+/* ── NAV NOTE ── */
+.nav-note { font-family:'Syne',sans-serif; font-size:10px; color:var(--muted); background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:8px; padding:5px 12px; letter-spacing:.05em; }
+
+/* ── LIVE CLOCK ── */
+.live-clock { font-family:'Syne',sans-serif; font-size:12px; font-weight:700; color:var(--accent); background:rgba(217,164,65,.08); border:1px solid rgba(217,164,65,.2); border-radius:20px; padding:5px 14px; letter-spacing:.06em; display:flex; align-items:center; gap:6px; }
+.live-clock::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--accent); animation:dotBlink 1.2s ease-in-out infinite; flex-shrink:0; }
+
+/* ── FILTER BAR ── */
+.filter-bar { display:flex; gap:8px; margin-bottom:22px; flex-wrap:wrap; }
+.filter-chip { padding:6px 16px; border-radius:20px; font-family:'Syne',sans-serif; font-size:11px; font-weight:700; cursor:pointer; letter-spacing:.05em; transition:all .2s; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.09); color:var(--muted); }
+.filter-chip:hover { color:var(--text); border-color:rgba(255,255,255,.2); }
+.filter-chip.active { color:#0f1209; }
+.fc-all.active { background:var(--accent); border-color:var(--accent); }
+.fc-green.active { background:var(--green); border-color:var(--green); color:#0a1a0a; }
+.fc-yellow.active { background:var(--yellow); border-color:var(--yellow); color:#1a1500; }
+.fc-red.active { background:var(--red); border-color:var(--red); }
+
+/* ── ATTENDANCE CARDS ── */
+.attendance-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:18px; }
+.att-card-wrap { height:190px; opacity:0; transform:translateY(30px) scale(.95); transition:opacity .5s,transform .5s; position:relative; }
+.att-card-wrap.revealed { opacity:1; transform:translateY(0) scale(1); }
+.att-card { width:100%; height:100%; position:relative; cursor:pointer; border-radius:18px; border:1px solid; backdrop-filter:blur(20px); overflow:hidden; transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s; }
+.att-card-wrap:hover .att-card { transform:translateY(-4px) scale(1.02); }
+.att-card.s-green { background:rgba(34,197,94,.06); border-color:rgba(34,197,94,.22); }
+.att-card.s-yellow { background:rgba(234,179,8,.06); border-color:rgba(234,179,8,.22); }
+.att-card.s-red { background:rgba(239,68,68,.06); border-color:rgba(239,68,68,.22); }
+.att-card-wrap:hover .att-card.s-green { box-shadow:0 16px 40px rgba(34,197,94,.18); border-color:rgba(34,197,94,.4); }
+.att-card-wrap:hover .att-card.s-yellow { box-shadow:0 16px 40px rgba(234,179,8,.18); border-color:rgba(234,179,8,.4); }
+.att-card-wrap:hover .att-card.s-red { box-shadow:0 16px 40px rgba(239,68,68,.18); border-color:rgba(239,68,68,.4); }
+.att-card::before { content:''; position:absolute; inset:0; border-radius:18px; background:linear-gradient(135deg,rgba(255,255,255,.04),transparent 60%); pointer-events:none; z-index:0; }
+
+.att-front { position:absolute; inset:0; padding:20px; display:flex; flex-direction:column; transition:opacity .28s,transform .28s; z-index:1; }
+.att-card-wrap:hover .att-front { opacity:0; transform:scale(.94); pointer-events:none; }
+.att-back { position:absolute; inset:0; padding:20px; display:flex; flex-direction:column; opacity:0; transform:translateY(10px); transition:opacity .28s .08s,transform .28s .08s; pointer-events:none; z-index:2; }
+.att-card-wrap:hover .att-back { opacity:1; transform:translateY(0); pointer-events:auto; }
+.att-back.s-green { background:rgba(10,28,12,.97); }
+.att-back.s-yellow { background:rgba(28,22,0,.97); }
+.att-back.s-red { background:rgba(28,6,6,.97); }
+
+.af-top { display:flex; align-items:flex-start; gap:12px; margin-bottom:12px; }
+.af-avatar { width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:17px; flex-shrink:0; position:relative; border:2px solid; }
+.af-avatar.av-green { border-color:rgba(34,197,94,.5); }
+.af-avatar.av-yellow { border-color:rgba(234,179,8,.5); }
+.af-avatar.av-red { border-color:rgba(239,68,68,.5); }
+.af-avatar::after { content:''; position:absolute; inset:-5px; border-radius:50%; border:1.5px solid; animation:ringPulse 2.4s ease-in-out infinite; }
+.av-green::after { border-color:rgba(34,197,94,.4); }
+.av-yellow::after { border-color:rgba(234,179,8,.4); }
+.av-red::after { border-color:rgba(239,68,68,.4); animation-play-state:paused; opacity:.3; }
+@keyframes ringPulse { 0%,100%{transform:scale(1);opacity:.7} 50%{transform:scale(1.18);opacity:0} }
+.af-info { flex:1; min-width:0; }
+.af-name { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.af-role { font-size:11px; color:var(--muted); }
+.af-badge { display:flex; align-items:center; gap:5px; padding:4px 11px; border-radius:20px; font-family:'Syne',sans-serif; font-size:10px; font-weight:700; letter-spacing:.06em; flex-shrink:0; }
+.ab-green { background:rgba(34,197,94,.15); border:1px solid rgba(34,197,94,.3); color:var(--green2); }
+.ab-yellow { background:rgba(234,179,8,.15); border:1px solid rgba(234,179,8,.3); color:var(--yellow2); }
+.ab-red { background:rgba(239,68,68,.15); border:1px solid rgba(239,68,68,.3); color:var(--red2); }
+.ab-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+.ab-green .ab-dot { background:var(--green); animation:dotBlink 1.4s ease-in-out infinite; }
+.ab-yellow .ab-dot { background:var(--yellow); animation:dotBlink 2s ease-in-out infinite; }
+.ab-red .ab-dot { background:var(--red); }
+@keyframes dotBlink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+.af-timeline { display:flex; gap:5px; margin-bottom:12px; }
+.at-block { flex:1; height:6px; border-radius:3px; background:rgba(255,255,255,.07); position:relative; overflow:hidden; }
+.at-block.filled::after { content:''; position:absolute; inset:0; border-radius:3px; }
+.at-block.filled.bg-green::after { background:linear-gradient(90deg,var(--green),var(--green2)); }
+.at-block.filled.bg-yellow::after { background:linear-gradient(90deg,var(--yellow),var(--yellow2)); }
+.at-block.filled.bg-red::after { background:rgba(239,68,68,.3); }
+.at-labels { display:flex; justify-content:space-between; font-size:9px; color:var(--muted); margin-bottom:12px; letter-spacing:.04em; font-family:'Syne',sans-serif; }
+.af-acts { display:flex; gap:7px; }
+.act-icon { display:flex; align-items:center; gap:4px; font-size:10px; color:var(--muted); background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-radius:8px; padding:4px 8px; }
+.act-icon svg { width:10px; height:10px; stroke:currentColor; flex-shrink:0; }
+.act-icon.ai-green { color:var(--green2); border-color:rgba(34,197,94,.2); background:rgba(34,197,94,.07); }
+.act-icon.ai-yellow { color:var(--yellow2); border-color:rgba(234,179,8,.2); background:rgba(234,179,8,.07); }
+.act-icon.ai-muted { opacity:.45; }
+.flip-hint { position:absolute; bottom:14px; right:16px; font-size:9px; color:var(--muted); opacity:.5; font-family:'Syne',sans-serif; letter-spacing:.06em; display:flex; align-items:center; gap:4px; }
+.flip-hint svg { width:9px; height:9px; stroke:currentColor; }
+
+.ab-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,.06); }
+.ab-av-sm { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:12px; flex-shrink:0; }
+.ab-name { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; }
+.ab-status-tag { margin-left:auto; font-size:10px; font-family:'Syne',sans-serif; font-weight:700; padding:2px 9px; border-radius:20px; }
+.ast-green { background:rgba(34,197,94,.15); color:var(--green2); border:1px solid rgba(34,197,94,.25); }
+.ast-yellow { background:rgba(234,179,8,.15); color:var(--yellow2); border:1px solid rgba(234,179,8,.25); }
+.ast-red { background:rgba(239,68,68,.15); color:var(--red2); border:1px solid rgba(239,68,68,.25); }
+.ab-events { flex:1; display:flex; flex-direction:column; gap:6px; overflow:hidden; }
+.ab-event { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text); }
+.ab-event-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+.ab-event-time { font-size:10px; color:var(--muted); margin-left:auto; white-space:nowrap; }
+.ab-empty { font-size:12px; color:var(--muted); text-align:center; margin-top:12px; opacity:.6; }
+
+/* ── HEATMAP (2-day: Yesterday + Today) ── */
+.heatmap-wrap { background:var(--card-bg); border:1px solid var(--card-border); border-radius:20px; padding:24px; margin-top:26px; backdrop-filter:blur(20px); opacity:0; transform:translateY(20px); transition:opacity .6s,transform .6s; }
+.heatmap-wrap.revealed { opacity:1; transform:translateY(0); }
+.hm-title { font-family:'Syne',sans-serif; font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:16px; }
+.hm-grid { display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; align-items:flex-start; }
+.hm-day-col { display:flex; flex-direction:column; gap:5px; align-items:center; }
+.hm-day-label { font-family:'Syne',sans-serif; font-size:10px; color:var(--muted); letter-spacing:.06em; margin-bottom:4px; text-align:center; }
+.hm-row-labels { display:flex; flex-direction:column; gap:5px; margin-right:4px; padding-top:24px; }
+.hm-row-label { height:28px; display:flex; align-items:center; font-family:'Syne',sans-serif; font-size:9px; letter-spacing:.06em; white-space:nowrap; }
+.hm-row-label.rl-yest { color:var(--muted); }
+.hm-row-label.rl-today { color:var(--accent); }
+.hm-cell { width:28px; height:28px; border-radius:6px; border:1px solid; cursor:pointer; transition:transform .2s,box-shadow .2s; position:relative; }
+.hm-cell:hover { transform:scale(1.25); z-index:10; }
+.hm-g { background:rgba(34,197,94,.25); border-color:rgba(34,197,94,.4); }
+.hm-g:hover { box-shadow:0 0 14px rgba(34,197,94,.5); }
+.hm-y { background:rgba(234,179,8,.2); border-color:rgba(234,179,8,.35); }
+.hm-y:hover { box-shadow:0 0 14px rgba(234,179,8,.5); }
+.hm-r { background:rgba(239,68,68,.15); border-color:rgba(239,68,68,.3); }
+.hm-r:hover { box-shadow:0 0 14px rgba(239,68,68,.4); }
+.hm-e { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.07); }
+
+/* ── TOAST ── */
+.toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); background:rgba(18,22,10,.97); border:1px solid rgba(217,164,65,.35); color:#fff; padding:11px 22px; border-radius:30px; font-size:13px; opacity:0; pointer-events:none; transition:opacity .3s,transform .3s; z-index:9999; white-space:nowrap; }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+.toast.success { border-color:rgba(34,197,94,.5); background:rgba(10,28,12,.97); }
+.toast.error { border-color:rgba(239,68,68,.5); background:rgba(28,6,6,.97); }
+
+#particleCanvas { position:fixed; inset:0; z-index:2; pointer-events:none; }
+
+.att-front.s-red .ghost-lines { position:absolute; inset:0; pointer-events:none; overflow:hidden; border-radius:18px; }
+.ghost-line { position:absolute; height:1px; width:100%; background:linear-gradient(90deg,transparent,rgba(239,68,68,.1),transparent); animation:ghostScan 4s linear infinite; }
+.ghost-line:nth-child(1) { top:30%; animation-delay:0s; }
+.ghost-line:nth-child(2) { top:60%; animation-delay:1.3s; }
+@keyframes ghostScan { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+@media(max-width:900px){.attendance-grid{grid-template-columns:1fr 1fr}.stats-row{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.attendance-grid{grid-template-columns:1fr}.stats-row{grid-template-columns:1fr}}
+</style>
+</head>
+
+<body>
+<script src="mentor-nav.js"></script>
+<canvas id="meshCanvas"></canvas>
+<canvas id="particleCanvas"></canvas>
+<div class="glow-cursor" id="glowCursor"></div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-section">Overview</div>
+    <a class="nav-item" href="mentor-dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" href="mentor-profile.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      My Profile
+    </a>
+    <a class="nav-item" href="mentor-interns.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      My Interns
+    </a>
+    <a class="nav-item active" href="mentor-attendance.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 16 11 18 15 14"/></svg>
+      Attendance
+    </a>
+    <div class="sb-section">Tasks</div>
+    <a class="nav-item" href="mentor-assign.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Assign Tasks
+      <span class="nav-badge">3</span>
+    </a>
+    <a class="nav-item" href="mentor-submissions.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Submissions <span class="nav-badge">5</span>
+    </a>
+    <a class="nav-item" href="mentor-feedback.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Give Feedback
+    </a>
+    <div class="sb-section">Manage</div>
+    <a class="nav-item" href="mentor-leave.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      Leave Requests <span class="nav-badge">2</span>
+    </a>
+    <a class="nav-item" href="mentor-content.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+      Manage Content
+    </a>
+    <a class="nav-item" href="mentor-certificate.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+      Certificates
+    </a>
+    <div class="sb-section">Communication</div>
+    <a class="nav-item" href="mentor-pvtchat.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>
+      Chat with Interns
+    </a>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <div class="page-title">Attendance <span>Tracker</span></div>
+    <div class="page-sub" id="pageSub">Real-time activity monitoring for all 10 interns</div>
+
+    <!-- LEGEND -->
+    <div class="legend-bar">
+      <div class="legend-pill lp-green">
+        <div class="lp-orb"></div>
+        <span class="lp-label">PRESENT</span>
+        <span class="lp-desc">— Task submitted today</span>
+        <span class="lp-count" id="cnt-green">0</span>
+      </div>
+      <div class="legend-pill lp-yellow">
+        <div class="lp-orb"></div>
+        <span class="lp-label">ACTIVE</span>
+        <span class="lp-desc">— Logged in, no submission</span>
+        <span class="lp-count" id="cnt-yellow">0</span>
+      </div>
+      <div class="legend-pill lp-red">
+        <div class="lp-orb"></div>
+        <span class="lp-label">ABSENT</span>
+        <span class="lp-desc">— No activity at all</span>
+        <span class="lp-count" id="cnt-red">0</span>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-tile st-green">
+        <div class="stat-n" id="sn-green">0</div>
+        <div class="stat-l">Present Today</div>
+        <div class="stat-bar" style="width:50%"></div>
+        <div class="stat-tooltip" id="tt-green"><div class="stt-label">🟢 Present</div></div>
+      </div>
+      <div class="stat-tile st-yellow">
+        <div class="stat-n" id="sn-yellow">0</div>
+        <div class="stat-l">Active (No Submit)</div>
+        <div class="stat-bar" style="width:30%"></div>
+        <div class="stat-tooltip" id="tt-yellow"><div class="stt-label">🟡 Active</div></div>
+      </div>
+      <div class="stat-tile st-red">
+        <div class="stat-n" id="sn-red">0</div>
+        <div class="stat-l">Absent</div>
+        <div class="stat-bar" style="width:20%"></div>
+        <div class="stat-tooltip" id="tt-red"><div class="stt-label">🔴 Absent</div></div>
+      </div>
+    </div>
+
+    <!-- DATE ROW -->
+    <div class="date-row">
+      <button class="date-btn" id="btnPrev" onclick="changeDay(-1)" title="Previous day">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="date-display" id="dateDisplay">—</div>
+      <button class="date-btn" id="btnNext" onclick="changeDay(1)" title="Next day">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="date-today" onclick="resetToday()">Today</button>
+      <div class="live-clock" id="liveClock">00:00:00</div>
+      <!-- Navigation note: only today + yesterday -->
+      <div class="nav-note" id="navNote">📅 Today ↔ Yesterday only</div>
+    </div>
+
+    <div class="filter-bar">
+      <div class="filter-chip fc-all active" onclick="setFilter('all',this)">All Interns</div>
+      <div class="filter-chip fc-green" onclick="setFilter('green',this)">🟢 Present</div>
+      <div class="filter-chip fc-yellow" onclick="setFilter('yellow',this)">🟡 Active</div>
+      <div class="filter-chip fc-red" onclick="setFilter('red',this)">🔴 Absent</div>
+    </div>
+
+    <div class="section-title" id="sectionTitle">Today's Attendance</div>
+
+    <!-- CARDS -->
+    <div class="attendance-grid" id="attGrid"></div>
+
+    <!-- HEATMAP — 2-day view: Yesterday + Today -->
+    <div class="heatmap-wrap" id="heatmapWrap">
+      <div class="hm-title" id="hmTitle">2-Day Activity Heatmap — Yesterday &amp; Today × All Interns</div>
+      <div class="hm-grid" id="hmGrid"></div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════
+   PHOTOS
+════════════════════════════════════════ */
+const PHOTOS = {
+  'Monisha K':      '../images/monisha.jpeg',
+  'Fiona Shalet':   '../images/fiona.jpeg',
+  'Stella Mary':    '../images/stella.jpeg',
+  'Bhavana R':      '../images/bhavana.jpeg',
+  'Deekshitha S':   '../images/deekshitha.jpeg',
+  'Arun Prasad':    '../images/arun.jpeg',
+  'Shonn Dias':     '../images/shonn.jpeg',
+  'Bhoomika Ravi':  '../images/bhoomika.jpeg',
+  'Hrithika Gowda': '../images/hrithika.jpeg',
+  'Vinay Kumar':    '../images/vinay.jpeg'
+};
+
+/* ════════════════════════════════════════
+   REAL DATE — always uses system date/time
+   currentOffset:  0 = today, -1 = yesterday ONLY
+   Navigation is capped: cannot go below -1 or above 0
+════════════════════════════════════════ */
+function getRealToday() { return new Date(); }
+
+// currentOffset: 0 = today, -1 = yesterday. Nothing else allowed.
+let currentOffset = 0;
+
+/* ════════════════════════════════════════
+   INTERN SEED TEMPLATE
+════════════════════════════════════════ */
+const INTERN_SEEDS = [
+  { id:1,  name:'Monisha K',      role:'Full Stack', initials:'MK',  color:'#d9a441', bg:'rgba(217,164,65,' },
+  { id:2,  name:'Fiona Shalet',   role:'Frontend',   initials:'FS',  color:'#2dd4bf', bg:'rgba(45,212,191,' },
+  { id:3,  name:'Stella Mary',    role:'Backend',    initials:'SM',  color:'#ff6b6b', bg:'rgba(255,107,107,'},
+  { id:4,  name:'Bhavana R',      role:'Full Stack', initials:'BR',  color:'#4ade80', bg:'rgba(74,222,128,' },
+  { id:5,  name:'Deekshitha S',   role:'UI/UX',      initials:'DS',  color:'#c084fc', bg:'rgba(168,85,247,' },
+  { id:6,  name:'Arun Prasad',    role:'Backend',    initials:'AP',  color:'#fbbf24', bg:'rgba(251,191,36,' },
+  { id:7,  name:'Shonn Dias',     role:'Full Stack', initials:'SD',  color:'#38bdf8', bg:'rgba(56,189,248,' },
+  { id:8,  name:'Bhoomika Ravi',  role:'Frontend',   initials:'BR2', color:'#fb7185', bg:'rgba(251,113,133,'},
+  { id:9,  name:'Hrithika Gowda', role:'Backend',    initials:'HG',  color:'#818cf8', bg:'rgba(99,102,241,' },
+  { id:10, name:'Vinay Kumar',    role:'Full Stack', initials:'VK',  color:'#2dd4bf', bg:'rgba(20,184,166,' },
+];
+
+/* ════════════════════════════════════════
+   TODAY'S SEED DATA
+════════════════════════════════════════ */
+const TODAY_SEED = [
+  {
+    id:1, status:'green',
+    events:[
+      {t:'09:14',label:'Logged in',c:'green'},
+      {t:'10:02',label:'Viewed Dashboard',c:'green'},
+      {t:'11:47',label:'Submitted Database Optimisation',c:'green'},
+    ],
+    timeline:[1,1,1,1,0,0,0,0], acts:['login','view','submit'],
+  },
+  {
+    id:2, status:'green',
+    events:[
+      {t:'09:00',label:'Logged in',c:'green'},
+      {t:'09:45',label:'React Component Library submitted',c:'green'},
+      {t:'11:20',label:'Viewed task list',c:'green'},
+    ],
+    timeline:[1,1,1,1,1,1,0,0], acts:['login','submit','view'],
+  },
+  {
+    id:3, status:'yellow',
+    events:[
+      {t:'10:30',label:'Logged in',c:'yellow'},
+      {t:'11:10',label:'Viewed assignments',c:'yellow'},
+    ],
+    timeline:[1,1,1,0,0,0,0,0], acts:['login','view'],
+  },
+  {
+    id:4, status:'green',
+    events:[
+      {t:'08:55',label:'Logged in',c:'green'},
+      {t:'09:30',label:'Worked on MySQL Schema',c:'green'},
+      {t:'12:15',label:'MySQL Schema Design submitted',c:'green'},
+    ],
+    timeline:[1,1,1,1,1,1,1,0], acts:['login','work','submit'],
+  },
+  {
+    id:5, status:'yellow',
+    events:[
+      {t:'11:00',label:'Logged in',c:'yellow'},
+      {t:'11:45',label:'Opened Figma files',c:'yellow'},
+    ],
+    timeline:[1,1,0,0,0,0,0,0], acts:['login','view'],
+  },
+  {
+    id:6, status:'green',
+    events:[
+      {t:'09:20',label:'Logged in',c:'green'},
+      {t:'10:15',label:'Django API module submitted',c:'green'},
+    ],
+    timeline:[1,1,1,1,0,0,0,0], acts:['login','submit'],
+  },
+  {
+    id:7, status:'red',
+    events:[], timeline:[0,0,0,0,0,0,0,0], acts:[],
+  },
+  {
+    id:8, status:'green',
+    events:[
+      {t:'09:05',label:'Logged in',c:'green'},
+      {t:'09:50',label:'TypeScript Module submitted',c:'green'},
+      {t:'11:00',label:'Peer review completed',c:'green'},
+    ],
+    timeline:[1,1,1,1,1,1,1,1], acts:['login','submit','review'],
+  },
+  {
+    id:9, status:'red',
+    events:[], timeline:[0,0,0,0,0,0,0,0], acts:[],
+  },
+  {
+    id:10, status:'yellow',
+    events:[
+      {t:'10:50',label:'Logged in',c:'yellow'},
+      {t:'11:30',label:'Reviewed GraphQL docs',c:'yellow'},
+    ],
+    timeline:[1,1,1,0,0,0,0,0], acts:['login','view'],
+  },
+];
+
+/* ════════════════════════════════════════
+   YESTERDAY'S SEED DATA
+   Mixed statuses — NOT all absent.
+   4 green · 3 yellow · 3 red
+════════════════════════════════════════ */
+const YESTERDAY_SEED = [
+  {
+    id:1, status:'green',
+    events:[
+      {t:'09:05',label:'Logged in',c:'green'},
+      {t:'10:30',label:'API Documentation submitted',c:'green'},
+    ],
+    timeline:[1,1,1,1,0,0,0,0], acts:['login','submit'],
+  },
+  {
+    id:2, status:'red',
+    events:[], timeline:[0,0,0,0,0,0,0,0], acts:[],
+  },
+  {
+    id:3, status:'green',
+    events:[
+      {t:'09:45',label:'Logged in',c:'green'},
+      {t:'11:00',label:'Node.js Module submitted',c:'green'},
+      {t:'12:10',label:'Code review done',c:'green'},
+    ],
+    timeline:[1,1,1,1,1,0,0,0], acts:['login','submit','review'],
+  },
+  {
+    id:4, status:'yellow',
+    events:[
+      {t:'10:10',label:'Logged in',c:'yellow'},
+      {t:'11:00',label:'Browsed task board',c:'yellow'},
+    ],
+    timeline:[1,1,1,0,0,0,0,0], acts:['login','view'],
+  },
+  {
+    id:5, status:'green',
+    events:[
+      {t:'09:00',label:'Logged in',c:'green'},
+      {t:'12:20',label:'Wireframes & Prototypes submitted',c:'green'},
+    ],
+    timeline:[1,1,1,1,1,1,1,0], acts:['login','submit'],
+  },
+  {
+    id:6, status:'red',
+    events:[], timeline:[0,0,0,0,0,0,0,0], acts:[],
+  },
+  {
+    id:7, status:'yellow',
+    events:[
+      {t:'11:30',label:'Logged in',c:'yellow'},
+      {t:'12:05',label:'Checked notifications',c:'yellow'},
+    ],
+    timeline:[1,1,0,0,0,0,0,0], acts:['login','view'],
+  },
+  {
+    id:8, status:'green',
+    events:[
+      {t:'09:10',label:'Logged in',c:'green'},
+      {t:'10:00',label:'CSS Framework module submitted',c:'green'},
+    ],
+    timeline:[1,1,1,1,0,0,0,0], acts:['login','submit'],
+  },
+  {
+    id:9, status:'yellow',
+    events:[
+      {t:'10:50',label:'Logged in',c:'yellow'},
+      {t:'11:20',label:'Reviewed pending assignments',c:'yellow'},
+    ],
+    timeline:[1,1,1,0,0,0,0,0], acts:['login','view'],
+  },
+  {
+    id:10, status:'red',
+    events:[], timeline:[0,0,0,0,0,0,0,0], acts:[],
+  },
+];
+
+/* ════════════════════════════════════════
+   BUILD INTERNS FROM SEED
+════════════════════════════════════════ */
+function buildInterns(seedData) {
+  return INTERN_SEEDS.map(seed => {
+    const s = seedData.find(p => p.id === seed.id) || {};
+    return {
+      ...seed,
+      status:   s.status   || 'red',
+      events:   s.events   || [],
+      timeline: s.timeline || [0,0,0,0,0,0,0,0],
+      acts:     s.acts     || [],
+    };
+  });
+}
+
+// Active intern list for current view
+let INTERNS = buildInterns(TODAY_SEED);
+
+/* ════════════════════════════════════════
+   LIVE CLOCK — real-time, updates every second
+════════════════════════════════════════ */
+function updateClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const ss = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('liveClock').textContent = `${hh}:${mm}:${ss}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ════════════════════════════════════════
+   DATE HELPERS
+════════════════════════════════════════ */
+function getActiveDate() {
+  const d = getRealToday();
+  d.setDate(d.getDate() + currentOffset);
+  return d;
+}
+
+function toISODate(d) {
+  const y   = d.getFullYear();
+  const m   = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function fmtDateLong(d) {
+  const dayNames   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return `${dayNames[d.getDay()]}, ${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function fmtDateShort(d) {
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]}, ${d.getDate()} ${monthNames[d.getMonth()]}`;
+}
+
+/* ════════════════════════════════════════
+   DATE UI UPDATE
+   Navigation locked: only today (0) and yesterday (-1)
+════════════════════════════════════════ */
+function updateDateUI() {
+  const d       = getActiveDate();
+  const isToday = currentOffset === 0;
+  const isYest  = currentOffset === -1;
+
+  document.getElementById('dateDisplay').textContent = fmtDateLong(d);
+
+  // ← disabled at yesterday; → disabled at today
+  document.getElementById('btnPrev').disabled = isYest;
+  document.getElementById('btnNext').disabled = isToday;
+
+  document.getElementById('sectionTitle').textContent =
+    isToday ? "Today's Attendance" : `Yesterday's Attendance — ${fmtDateLong(d)}`;
+
+  document.getElementById('pageSub').textContent =
+    `Real-time activity monitoring for all 10 interns · ${isToday ? 'Today' : 'Yesterday'}, ${fmtDateLong(d)}`;
+
+  document.getElementById('hmTitle').textContent =
+    `2-Day Activity Heatmap — Yesterday & Today × All Interns`;
+
+  document.getElementById('navNote').textContent =
+    isToday ? '📅 ← Yesterday available' : '📅 → Back to Today';
+}
+
+/* ════════════════════════════════════════
+   DATE NAVIGATION
+   STRICTLY limited to today (0) and yesterday (-1)
+   No going further back. No going to future.
+════════════════════════════════════════ */
+function changeDay(delta) {
+  const next = currentOffset + delta;
+  // Block: cannot go below -1 (yesterday) or above 0 (today)
+  if (next > 0 || next < -1) return;
+  currentOffset = next;
+
+  // Load correct seed based on offset
+  INTERNS = buildInterns(currentOffset === 0 ? TODAY_SEED : YESTERDAY_SEED);
+
+  updateDateUI();
+  activeFilter = 'all';
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  document.querySelector('.fc-all').classList.add('active');
+  renderCards();
+  renderHeatmap();
+  showToast(currentOffset === 0 ? '📅 Showing today\'s attendance' : '📅 Showing yesterday\'s attendance');
+}
+
+function resetToday() {
+  if (currentOffset === 0) return;
+  currentOffset = 0;
+  INTERNS = buildInterns(TODAY_SEED);
+  updateDateUI();
+  activeFilter = 'all';
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  document.querySelector('.fc-all').classList.add('active');
+  renderCards();
+  renderHeatmap();
+  showToast('📅 Back to today\'s attendance');
+}
+
+/* ════════════════════════════════════════
+   FILTER
+════════════════════════════════════════ */
+let activeFilter = 'all';
+function setFilter(f, el) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderCards();
+}
+
+/* ════════════════════════════════════════
+   RENDER CARDS
+════════════════════════════════════════ */
+const actIcons = {
+  login:  `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Login`,
+  submit: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Submitted`,
+  view:   `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Viewed`,
+  work:   `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Active`,
+  review: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Reviewed`,
+};
+
+const statusMeta = {
+  green:  { badge:'ab-green',  front:'s-green',  back:'s-green',  av:'av-green',  ast:'ast-green',  bLabel:'🟢 PRESENT' },
+  yellow: { badge:'ab-yellow', front:'s-yellow', back:'s-yellow', av:'av-yellow', ast:'ast-yellow', bLabel:'🟡 ACTIVE'  },
+  red:    { badge:'ab-red',    front:'s-red',    back:'s-red',    av:'av-red',    ast:'ast-red',    bLabel:'🔴 ABSENT'  },
+};
+
+function renderCards() {
+  const grid = document.getElementById('attGrid');
+  grid.innerHTML = '';
+
+  const filtered = activeFilter === 'all'
+    ? INTERNS
+    : INTERNS.filter(i => i.status === activeFilter);
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);font-family:'Syne',sans-serif;font-size:12px;letter-spacing:.1em;">No interns match this filter.</div>`;
+    updateCounts();
+    return;
+  }
+
+  filtered.forEach((intern, idx) => {
+    const m        = statusMeta[intern.status] || statusMeta.red;
+    const timeline = intern.timeline || [0,0,0,0,0,0,0,0];
+
+    const tlHTML = timeline.map(v => {
+      const cls = v ? `filled bg-${intern.status}` : '';
+      return `<div class="at-block ${cls}"></div>`;
+    }).join('');
+
+    const actsHTML = intern.status === 'red'
+      ? `<div class="act-icon ai-muted"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>No Activity</div>`
+      : (intern.acts || []).map(a => {
+          const ac = a === 'submit' ? 'ai-green' : (a === 'login' ? 'ai-yellow' : '');
+          return `<div class="act-icon ${ac}">${actIcons[a] || a}</div>`;
+        }).join('');
+
+    const eventsHTML = (intern.events || []).length
+      ? intern.events.map(e =>
+          `<div class="ab-event">
+            <div class="ab-event-dot" style="background:${e.c==='green'?'var(--green)':e.c==='yellow'?'var(--yellow)':'var(--red)'}"></div>
+            <span>${e.label}</span>
+            <span class="ab-event-time">${e.t}</span>
+          </div>`
+        ).join('')
+      : `<div class="ab-empty">⚠ No activity recorded</div>`;
+
+    const ghostLines = intern.status === 'red'
+      ? `<div class="ghost-lines"><div class="ghost-line"></div><div class="ghost-line"></div></div>` : '';
+
+    const avatarContent = PHOTOS[intern.name]
+      ? `<img src="${PHOTOS[intern.name]}" alt="${intern.name}" style="width:100%;height:100%;object-fit:cover;object-position:center top;border-radius:50%;display:block;">`
+      : intern.initials;
+
+    const avatarStyle = PHOTOS[intern.name]
+      ? `border:2px solid ${intern.status==='green'?'rgba(34,197,94,.5)':intern.status==='yellow'?'rgba(234,179,8,.5)':'rgba(239,68,68,.5)'};padding:0;overflow:hidden;`
+      : `background:linear-gradient(135deg,${intern.bg}0.3),${intern.bg}0.08));color:${intern.color};`;
+
+    const wrap = document.createElement('div');
+    wrap.className      = 'att-card-wrap';
+    wrap.dataset.status = intern.status;
+
+    wrap.innerHTML = `
+      <div class="att-card ${m.front}">
+        <div class="att-front">
+          ${ghostLines}
+          <div class="af-top">
+            <div class="af-avatar ${m.av}" style="${avatarStyle}">${avatarContent}</div>
+            <div class="af-info">
+              <div class="af-name">${intern.name}</div>
+              <div class="af-role">${intern.role} Intern</div>
+            </div>
+            <div class="af-badge ${m.badge}">
+              <div class="ab-dot"></div>
+              ${m.bLabel}
+            </div>
+          </div>
+          <div class="af-timeline">${tlHTML}</div>
+          <div class="at-labels"><span>9 AM</span><span>12 PM</span><span>3 PM</span><span>6 PM</span></div>
+          <div class="af-acts">${actsHTML}</div>
+          <div class="flip-hint">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            Hover for details
+          </div>
+        </div>
+        <div class="att-back ${m.back}">
+          <div class="ab-header">
+            <div class="ab-av-sm" style="background:linear-gradient(135deg,${intern.bg}0.3),${intern.bg}0.08));color:${intern.color}">${intern.initials}</div>
+            <div class="ab-name">${intern.name}</div>
+            <div class="ab-status-tag ${m.ast}">${m.bLabel}</div>
+          </div>
+          <div class="ab-events">${eventsHTML}</div>
+        </div>
+      </div>`;
+
+    setTimeout(() => {
+      wrap.classList.add('revealed');
+      if (intern.status === 'green') {
+        const r = wrap.getBoundingClientRect();
+        spawnParticle(r.left + r.width / 2, r.top + 20, 'green');
+      }
+    }, 80 + idx * 70);
+
+    grid.appendChild(wrap);
+  });
+
+  updateCounts();
+}
+
+/* ════════════════════════════════════════
+   COUNTS & STATS
+════════════════════════════════════════ */
+function updateCounts() {
+  const g = INTERNS.filter(i => i.status === 'green');
+  const y = INTERNS.filter(i => i.status === 'yellow');
+  const r = INTERNS.filter(i => i.status === 'red');
+
+  animateNum('cnt-green', g.length);
+  animateNum('cnt-yellow', y.length);
+  animateNum('cnt-red', r.length);
+  animateNum('sn-green', g.length);
+  animateNum('sn-yellow', y.length);
+  animateNum('sn-red', r.length);
+
+  const total = INTERNS.length || 1;
+  document.querySelector('.st-green .stat-bar').style.width = `${(g.length/total)*100}%`;
+  document.querySelector('.st-yellow .stat-bar').style.width = `${(y.length/total)*100}%`;
+  document.querySelector('.st-red .stat-bar').style.width = `${(r.length/total)*100}%`;
+
+  const fill = (id, interns) => {
+    const tt = document.getElementById(id);
+    tt.querySelectorAll('.stt-row').forEach(e => e.remove());
+    interns.forEach(intern => {
+      const row = document.createElement('div');
+      row.className = 'stt-row';
+      row.innerHTML = `<div class="stt-dot" style="background:${intern.color}"></div><span>${intern.name}</span><span class="stt-role">${intern.role}</span>`;
+      tt.appendChild(row);
+    });
+  };
+  fill('tt-green', g);
+  fill('tt-yellow', y);
+  fill('tt-red', r);
+}
+
+function animateNum(id, target) {
+  let v  = 0;
+  const el = document.getElementById(id);
+  const iv = setInterval(() => {
+    v = Math.min(v + 1, target);
+    el.textContent = v;
+    if (v >= target) clearInterval(iv);
+  }, 60);
+}
+
+/* ════════════════════════════════════════
+   HEATMAP — 2-day view ONLY: Yesterday + Today
+   One column per intern, 2 cells per column:
+     Row 1 = Yesterday status
+     Row 2 = Today status
+════════════════════════════════════════ */
+function renderHeatmap() {
+  const grid = document.getElementById('hmGrid');
+  grid.innerHTML = '';
+
+  const today     = getRealToday();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const todayInterns     = buildInterns(TODAY_SEED);
+  const yesterdayInterns = buildInterns(YESTERDAY_SEED);
+
+  // Row labels column (left side)
+  const labelCol = document.createElement('div');
+  labelCol.className = 'hm-row-labels';
+  labelCol.innerHTML = `
+    <div class="hm-row-label rl-yest">← ${fmtDateShort(yesterday)}</div>
+    <div class="hm-row-label rl-today">← ${fmtDateShort(today)} (Today)</div>`;
+  grid.appendChild(labelCol);
+
+  // One column per intern
+  INTERN_SEEDS.forEach(seed => {
+    const ti = todayInterns.find(i => i.id === seed.id);
+    const yi = yesterdayInterns.find(i => i.id === seed.id);
+
+    const tSt = ti ? ti.status : 'red';
+    const ySt = yi ? yi.status : 'red';
+
+    const tCls   = tSt==='green'?'hm-g':tSt==='yellow'?'hm-y':'hm-r';
+    const yCls   = ySt==='green'?'hm-g':ySt==='yellow'?'hm-y':'hm-r';
+    const tLabel = tSt==='green'?'Present':tSt==='yellow'?'Active':'Absent';
+    const yLabel = ySt==='green'?'Present':ySt==='yellow'?'Active':'Absent';
+
+    const col = document.createElement('div');
+    col.className = 'hm-day-col';
+    col.innerHTML = `
+      <div class="hm-day-label">${seed.initials}</div>
+      <div class="hm-cell ${yCls}" title="${seed.name} · Yesterday (${fmtDateShort(yesterday)}): ${yLabel}" onclick="showToast('${seed.name} · Yesterday: ${yLabel}')"></div>
+      <div class="hm-cell ${tCls}" title="${seed.name} · Today (${fmtDateShort(today)}): ${tLabel}" onclick="showToast('${seed.name} · Today: ${tLabel}')"></div>`;
+    grid.appendChild(col);
+  });
+
+  setTimeout(() => document.getElementById('heatmapWrap').classList.add('revealed'), 600);
+}
+
+/* ════════════════════════════════════════
+   TOAST
+════════════════════════════════════════ */
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (type ? ' ' + type : '');
+  void t.offsetWidth;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+/* ════════════════════════════════════════
+   MESH BACKGROUND
+════════════════════════════════════════ */
+const meshCvs = document.getElementById('meshCanvas'), mCtx = meshCvs.getContext('2d');
+let MW, MH;
+function rsz() { MW = meshCvs.width = innerWidth; MH = meshCvs.height = innerHeight; }
+rsz(); addEventListener('resize', rsz);
+const mPts = [
+  {ax:.6,ay:.2,rx:.3,ry:.2,fx:.00028,fy:.00016,px:0, py:1, r:600,c:'rgba(180,120,20,'},
+  {ax:.2,ay:.7,rx:.2,ry:.25,fx:.00018,fy:.00026,px:2.4,py:0, r:520,c:'rgba(34,197,94,'},
+  {ax:.5,ay:.1,rx:.25,ry:.2,fx:.00022,fy:.00014,px:1, py:2, r:560,c:'rgba(50,65,20,'},
+  {ax:.85,ay:.8,rx:.2,ry:.2,fx:.00013,fy:.00031,px:.5,py:.8,r:480,c:'rgba(44,58,18,'},
+];
+function drawMesh(t) {
+  mCtx.fillStyle = '#0f1209'; mCtx.fillRect(0,0,MW,MH);
+  mPts.forEach(p => {
+    const x = MW*(p.ax + p.rx*Math.sin(p.fx*t + p.px));
+    const y = MH*(p.ay + p.ry*Math.cos(p.fy*t + p.py));
+    const g = mCtx.createRadialGradient(x,y,0,x,y,p.r);
+    g.addColorStop(0, p.c+'0.22)'); g.addColorStop(.5, p.c+'0.06)'); g.addColorStop(1, p.c+'0)');
+    mCtx.fillStyle = g; mCtx.fillRect(0,0,MW,MH);
+  });
+  const v = mCtx.createRadialGradient(MW/2,MH/2,MH*.1,MW/2,MH/2,MH*.85);
+  v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.55)');
+  mCtx.fillStyle = v; mCtx.fillRect(0,0,MW,MH);
+}
+let mT0 = null;
+(function mLoop(ts){ if(!mT0) mT0=ts; drawMesh(ts-mT0); requestAnimationFrame(mLoop); })(0);
+
+/* ════════════════════════════════════════
+   PARTICLES
+════════════════════════════════════════ */
+const pCvs = document.getElementById('particleCanvas'), pCtx = pCvs.getContext('2d');
+pCvs.width = innerWidth; pCvs.height = innerHeight;
+addEventListener('resize', () => { pCvs.width = innerWidth; pCvs.height = innerHeight; });
+
+const particles = [];
+const STATUS_COLORS = { green:'rgba(34,197,94,', yellow:'rgba(234,179,8,', red:'rgba(239,68,68,' };
+
+function spawnParticle(x, y, status) {
+  const c = STATUS_COLORS[status] || 'rgba(217,164,65,';
+  for (let i = 0; i < 6; i++) {
+    particles.push({
+      x, y, c,
+      vx: (Math.random()-.5)*2.5,
+      vy: -Math.random()*2.5 - 1,
+      r:  Math.random()*3 + 1,
+      life: 1,
+      decay: .016 + Math.random()*.012
+    });
+  }
+}
+
+function drawParticles() {
+  pCtx.clearRect(0,0,pCvs.width,pCvs.height);
+  for (let i = particles.length-1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= p.decay; p.x += p.vx; p.y += p.vy; p.vy += .04;
+    if (p.life <= 0) { particles.splice(i,1); continue; }
+    pCtx.beginPath(); pCtx.arc(p.x, p.y, p.r*p.life, 0, Math.PI*2);
+    pCtx.fillStyle = p.c + p.life + ')'; pCtx.fill();
+  }
+  requestAnimationFrame(drawParticles);
+}
+drawParticles();
+
+addEventListener('mousemove', e => {
+  document.getElementById('glowCursor').style.left = e.clientX + 'px';
+  document.getElementById('glowCursor').style.top  = e.clientY + 'px';
+});
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+(function init() {
+  updateDateUI();
+  renderCards();
+  renderHeatmap();
+
+  // Periodic green particle bursts on present cards
+  setInterval(() => {
+    const wraps = [...document.querySelectorAll('.att-card-wrap[data-status="green"]')];
+    if (!wraps.length) return;
+    const w = wraps[Math.floor(Math.random() * wraps.length)];
+    const r = w.getBoundingClientRect();
+    spawnParticle(r.left + Math.random()*r.width, r.top + Math.random()*20 + 10, 'green');
+  }, 1200);
+
+  // Sidebar magnetic hover
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('mousemove', e => {
+      const r = item.getBoundingClientRect();
+      if (!item.classList.contains('active'))
+        item.style.transform = `translateY(${(e.clientY - r.top - r.height/2) * .1}px)`;
+    });
+    item.addEventListener('mouseleave', () => {
+      item.style.transition = 'transform .4s cubic-bezier(.34,1.56,.64,1)';
+      item.style.transform  = 'translateY(0)';
+      setTimeout(() => item.style.transition = '', 400);
+    });
+  });
+})();
+</script>
+</body>
+</html>

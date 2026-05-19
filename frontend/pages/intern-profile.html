@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InternSync &#8212; Profile</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#d9a441; --accent2:#f0c060; --bg:#1a1d0f;
+  --card-bg:rgba(255,255,255,0.055); --card-border:rgba(255,255,255,0.13);
+  --text:#f0ede4; --muted:rgba(240,237,228,0.45);
+  --teal:#2dd4bf; --red:#ff6b6b; --sidebar-w:230px;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; display:flex; flex-direction:column; }
+#meshCanvas{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+.glow{ position:fixed; width:380px; height:380px; background:radial-gradient(circle,rgba(217,164,65,.18),transparent 70%); border-radius:50%; pointer-events:none; filter:blur(60px); transform:translate(-50%,-50%); z-index:1; }
+.layout{ display:flex; flex:1; position:relative; z-index:5; }
+.sidebar{ width:var(--sidebar-w); flex-shrink:0; background:rgba(10,13,6,.6); backdrop-filter:blur(20px); border-right:1px solid rgba(255,255,255,.07); padding:24px 0; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:auto; }
+.sidebar::-webkit-scrollbar{ width:3px; }
+.sidebar::-webkit-scrollbar-thumb{ background:rgba(217,164,65,.15); border-radius:4px; }
+.sidebar-section{ font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(240,237,228,.2); padding:0 20px; margin:18px 0 8px; }
+.sidebar-section:first-child{ margin-top:0; }
+.nav-item{ display:flex; align-items:center; gap:11px; padding:10px 20px; cursor:pointer; position:relative; color:var(--muted); font-size:13px; font-weight:500; transition:color .2s,background .2s; text-decoration:none; }
+.nav-item svg{ width:16px; height:16px; stroke:currentColor; flex-shrink:0; }
+.nav-item:hover{ color:var(--text); background:rgba(255,255,255,.04); }
+.nav-item.active{ color:var(--accent); background:rgba(217,164,65,.08); border-right:2px solid var(--accent); }
+.nav-item.active svg{ stroke:var(--accent); }
+main{ flex:1; padding:32px 36px; overflow-y:auto; }
+.section-title{ font-family:'Syne',sans-serif; font-size:13px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:24px; display:flex; align-items:center; gap:10px; }
+.section-title::after{ content:''; flex:1; height:1px; background:rgba(217,164,65,.18); }
+.card{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:18px; padding:28px; backdrop-filter:blur(20px); box-shadow:0 8px 32px rgba(0,0,0,.35); position:relative; overflow:hidden; transition:transform .25s ease,box-shadow .25s ease; transform-style:preserve-3d; opacity:0; transform:translateY(24px); }
+.card.visible{ animation:cardIn .55s cubic-bezier(.22,1,.36,1) forwards; }
+.card::before{ content:''; position:absolute; inset:0; border-radius:18px; background:linear-gradient(135deg,rgba(217,164,65,.04),transparent 60%); pointer-events:none; }
+@keyframes cardIn{ from{opacity:0;transform:translateY(28px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.card-title{ font-family:'Syne',sans-serif; font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:20px; }
+.profile-hero-card{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:18px; padding:36px 32px; backdrop-filter:blur(20px); box-shadow:0 8px 32px rgba(0,0,0,.35); position:relative; overflow:hidden; margin-bottom:20px; opacity:0; transform:translateY(24px); transition:transform .25s ease,box-shadow .25s ease; transform-style:preserve-3d; }
+.profile-hero-card.visible{ animation:cardIn .55s cubic-bezier(.22,1,.36,1) forwards; }
+.profile-hero-card::before{ content:''; position:absolute; inset:0; border-radius:18px; background:linear-gradient(135deg,rgba(217,164,65,.06),transparent 55%); pointer-events:none; }
+.profile-hero-card::after{ content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--accent),var(--accent2),transparent); border-radius:18px 18px 0 0; }
+.profile-hero-inner{ display:flex; align-items:center; gap:32px; }
+.avatar-lg{ width:110px; height:110px; border-radius:50%; flex-shrink:0; border:3px solid rgba(217,164,65,.5); box-shadow:0 0 32px rgba(217,164,65,.25); position:relative; overflow:hidden; cursor:pointer; transition:box-shadow .3s,transform .3s; }
+.avatar-lg:hover{ box-shadow:0 0 48px rgba(217,164,65,.4); transform:scale(1.04); }
+.avatar-lg img{ width:100%; height:100%; object-fit:cover; object-position:center 10%; display:block; border-radius:50%; }
+.avatar-lg .upload-hint{ position:absolute; inset:0; border-radius:50%; background:rgba(26,29,15,.75); display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:0; transition:opacity .25s; }
+.avatar-lg:hover .upload-hint{ opacity:1; }
+.upload-hint svg{ width:20px; height:20px; stroke:#fff; margin-bottom:4px; }
+.upload-hint span{ font-size:9px; color:#fff; font-family:'Syne',sans-serif; letter-spacing:.06em; }
+.profile-info{ flex:1; }
+.profile-name{ font-family:'Syne',sans-serif; font-size:26px; font-weight:800; line-height:1.1; margin-bottom:6px; }
+.profile-role{ font-size:13px; color:var(--muted); margin-bottom:14px; }
+.profile-badges{ display:flex; gap:8px; flex-wrap:wrap; }
+.pbadge{ display:inline-flex; align-items:center; gap:5px; border-radius:8px; padding:4px 12px; font-family:'Syne',sans-serif; font-size:11px; font-weight:700; letter-spacing:.06em; }
+.pbadge-gold{ background:rgba(217,164,65,.12); border:1px solid rgba(217,164,65,.28); color:var(--accent); }
+.pbadge-teal{ background:rgba(45,212,191,.1); border:1px solid rgba(45,212,191,.25); color:var(--teal); }
+.pbadge-muted{ background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); color:var(--muted); }
+.grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
+.info-row{ display:flex; align-items:center; gap:14px; padding:13px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+.info-row:last-child{ border-bottom:none; padding-bottom:0; }
+.info-icon{ width:34px; height:34px; border-radius:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:rgba(217,164,65,.1); border:1px solid rgba(217,164,65,.2); }
+.info-icon svg{ width:15px; height:15px; stroke:var(--accent); }
+.info-label{ font-size:11px; color:var(--muted); margin-bottom:2px; }
+.info-val{ font-family:'Syne',sans-serif; font-size:14px; font-weight:700; color:var(--text); }
+.mentor-card-inner{ display:flex; align-items:center; gap:16px; }
+.mentor-avatar{ width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,rgba(45,212,191,.3),rgba(45,212,191,.1)); border:2px solid rgba(45,212,191,.35); display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:700; font-size:18px; color:var(--teal); flex-shrink:0; overflow:hidden; padding:0; }
+.mentor-info{ flex:1; }
+.mentor-name{ font-family:'Syne',sans-serif; font-size:16px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.mentor-email{ font-size:12px; color:var(--muted); }
+.mentor-badge{ display:inline-flex; align-items:center; gap:5px; background:rgba(45,212,191,.1); border:1px solid rgba(45,212,191,.25); border-radius:8px; padding:3px 10px; font-family:'Syne',sans-serif; font-size:10px; font-weight:700; color:var(--teal); letter-spacing:.08em; margin-top:6px; }
+.duration-wrap{ margin-top:16px; }
+.duration-labels{ display:flex; justify-content:space-between; margin-bottom:8px; font-size:11px; color:var(--muted); }
+.duration-bar{ height:8px; background:rgba(255,255,255,.07); border-radius:10px; overflow:hidden; }
+.duration-fill{ height:100%; border-radius:10px; background:linear-gradient(90deg,var(--accent),var(--accent2)); width:0; transition:width 1.4s cubic-bezier(.4,0,.2,1); position:relative; overflow:hidden; }
+.duration-fill::after{ content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,.3) 50%,transparent); animation:shineBar 2.2s infinite linear; }
+@keyframes shineBar{ from{transform:translateX(-100%)} to{transform:translateX(200%)} }
+.duration-months{ display:flex; justify-content:space-between; margin-top:10px; }
+.dur-month{ text-align:center; }
+.dur-dot{ width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.15); margin:0 auto 4px; }
+.dur-dot.active{ background:var(--accent); box-shadow:0 0 8px rgba(217,164,65,.5); }
+.dur-dot.done{ background:rgba(217,164,65,.5); }
+.dur-label{ font-size:10px; color:var(--muted); }
+/* score ring */
+.score-ring-wrap{ display:flex; align-items:center; gap:16px; margin-top:14px; }
+.score-ring{ position:relative; width:72px; height:72px; flex-shrink:0; }
+.score-ring svg{ transform:rotate(-90deg); }
+.score-ring .ring-track{ fill:none; stroke:rgba(255,255,255,.07); stroke-width:6; }
+.score-ring .ring-fill{ fill:none; stroke:url(#ringGrad); stroke-width:6; stroke-linecap:round; stroke-dasharray:188; stroke-dashoffset:188; transition:stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1); }
+.score-ring .ring-text{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-size:16px; font-weight:800; color:var(--accent); }
+.particle{ position:fixed; border-radius:50%; background:rgba(217,164,65,.14); pointer-events:none; z-index:2; animation:floatUp linear infinite; }
+@keyframes floatUp{ 0%{transform:translateY(0) scale(1);opacity:.4} 50%{transform:translateY(-70px) scale(1.1);opacity:.15} 100%{transform:translateY(-140px) scale(.8);opacity:0} }
+</style>
+</head>
+<body>
+<canvas id="meshCanvas"></canvas>
+<div class="glow" id="glow"></div>
+
+<script>
+  IS_NAV_CONFIG = { name:"Monisha K", photo:"", profileURL:"intern-profile.html", logoutURL:"auth.html", showBack:false, backURL:"main.html" };
+</script>
+<script src="intern-nav.js"></script>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Menu</div>
+    <a class="nav-item" href="intern-dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
+    <a class="nav-item" href="intern-content.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Content for You</a>
+    <a class="nav-item" href="intern-taskassigned.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Task Assigned</a>
+    <a class="nav-item" href="intern-submission.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Submission</a>
+    <a class="nav-item" href="intern-feedback.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Feedback</a>
+    <div class="sidebar-section">Communication</div>
+    <a class="nav-item" href="intern-leave.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Leave Request</a>
+    <a class="nav-item" href="intern-discussion.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Discussion Room</a>
+    <a class="nav-item" href="intern-pvtchat.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>Chat with Mentor</a>
+    <div class="sidebar-section">Profile</div>
+    <a class="nav-item active" href="intern-profile.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>My Profile</a>
+    <a class="nav-item" href="intern-certificate.html"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>View Certificate</a>
+  </aside>
+
+  <main>
+    <div class="section-title">My Profile</div>
+
+    <!-- HERO CARD -->
+    <div class="profile-hero-card" id="hero">
+      <div class="profile-hero-inner">
+        <div class="avatar-lg" title="Change photo">
+          <img id="heroAvatarImg" alt="Monisha K" src="../images/monisha.jpeg" />
+          <div class="upload-hint">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>CHANGE</span>
+          </div>
+        </div>
+        <div class="profile-info">
+          <div class="profile-name">Monisha K</div>
+          <div class="profile-role">Full Stack Intern</div>
+          <div class="profile-badges">
+            <span class="pbadge pbadge-gold"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>Intern</span>
+            <span class="pbadge pbadge-teal"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Active</span>
+            <span class="pbadge pbadge-muted">ID: 2</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- PERSONAL INFO CARD -->
+      <div class="card" id="c1">
+        <div class="card-title">Personal Information</div>
+        <div class="info-row"><div class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div><div class="info-label">Full Name</div><div class="info-val">Monisha K</div></div></div>
+        <div class="info-row"><div class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div><div><div class="info-label">Role</div><div class="info-val">Full Stack Intern</div></div></div>
+        <div class="info-row"><div class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div><div><div class="info-label">Email</div><div class="info-val" style="font-size:13px">monishakmurthy7@gmail.com</div></div></div>
+        <div class="info-row"><div class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div><div class="info-label">Start Date</div><div class="info-val">January 15, 2026</div></div></div>
+        <div class="info-row"><div class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div><div class="info-label">Location</div><div class="info-val">IBM, Manyata Embassy Business Park, Bengaluru</div></div></div>
+        <div class="info-row"><div class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><div class="info-label">Unique ID</div><div class="info-val" style="color:var(--accent);letter-spacing:.06em">2</div></div></div>
+      </div>
+
+      <!-- MENTOR CARD -->
+      <div class="card" id="c2">
+        <div class="card-title">Mentor Assigned</div>
+        <div class="mentor-card-inner">
+          <div class="avatar-lg">
+          <img id="heroAvatar" src="data:image/jpeg;base64,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" />
+          </div>
+          <div class="mentor-info">
+            <div class="mentor-name">Raj Sharma</div>
+            <div class="mentor-email">rajsharma@ibm.com</div>
+            <div class="mentor-badge"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Mentor</div>
+          </div>
+        </div>
+
+        <!-- ═══ INTERNSHIP DURATION — 80 / 100 ═══ -->
+        <div class="duration-wrap">
+          <div class="info-row" style="margin-bottom:14px">
+            <div class="info-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            <div>
+              <div class="info-label">Internship Duration</div>
+              <div class="info-val">
+                3 Months &nbsp;<span style="font-size:11px;color:var(--muted);font-family:'DM Sans'">(Jan 15 &#8211; Apr 15, 2026)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="duration-labels">
+            <span>Progress</span>
+            <!-- percentage counter — animated to 80 -->
+            <span style="color:var(--accent);font-family:'Syne',sans-serif;font-weight:700" id="durPct">0%</span>
+          </div>
+
+          <!-- bar fills to 80% -->
+          <div class="duration-bar">
+            <div class="duration-fill" id="durFill"></div>
+          </div>
+
+          <!-- 5-dot timeline: Jan done · Feb done · Mar done · Apr active · End upcoming -->
+          <div class="duration-months">
+            <div class="dur-month"><div class="dur-dot done"></div><div class="dur-label">Jan</div></div>
+            <div class="dur-month"><div class="dur-dot done"></div><div class="dur-label">Feb</div></div>
+            <div class="dur-month"><div class="dur-dot done"></div><div class="dur-label">Mar</div></div>
+            <div class="dur-month"><div class="dur-dot active"></div><div class="dur-label">Apr</div></div>
+            <div class="dur-month"><div class="dur-dot"></div><div class="dur-label">End</div></div>
+          </div>
+
+          <!-- score fraction label -->
+          <div style="margin-top:12px;text-align:right;font-family:'Syne',sans-serif;font-size:12px;color:var(--muted)">
+            Days completed: <span style="color:var(--accent);font-weight:700">80</span> / 100
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS ROW -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:18px">
+      <div class="card" id="c3" style="text-align:center;padding:20px 16px"><div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--accent);line-height:1">5</div><div style="font-size:11px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.08em">Tasks Assigned</div></div>
+      <div class="card" id="c4" style="text-align:center;padding:20px 16px"><div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--teal);line-height:1">3</div><div style="font-size:11px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.08em">Completed</div></div>
+      <div class="card" id="c5" style="text-align:center;padding:20px 16px"><div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--accent);line-height:1">80<span style="font-size:14px;color:rgba(217,164,65,.5)">%</span></div><div style="font-size:11px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.08em">Attendance</div></div>
+      <div class="card" id="c6" style="text-align:center;padding:20px 16px"><div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--accent2);line-height:1">4.9</div><div style="font-size:11px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.08em">Mentor Rating</div></div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ── Mesh canvas ── */
+const cvs=document.getElementById('meshCanvas'),ctx=cvs.getContext('2d');
+let W,H;
+function rsz(){ W=cvs.width=innerWidth; H=cvs.height=innerHeight; }
+rsz(); addEventListener('resize',rsz);
+const pts=[
+  {ax:.65,ay:.25,rx:.3,ry:.2,fx:.00028,fy:.00016,px:0,py:1,r:620,c:'rgba(180,120,20,'},
+  {ax:.2,ay:.65,rx:.22,ry:.28,fx:.00018,fy:.00026,px:2.4,py:0,r:540,c:'rgba(155,100,15,'},
+  {ax:.5,ay:.1,rx:.28,ry:.2,fx:.00022,fy:.00014,px:1,py:2,r:580,c:'rgba(50,65,20,'},
+  {ax:.88,ay:.78,rx:.2,ry:.22,fx:.00013,fy:.00031,px:.5,py:.8,r:500,c:'rgba(44,58,18,'},
+  {ax:.08,ay:.18,rx:.18,ry:.22,fx:.00025,fy:.0002,px:3,py:1.5,r:460,c:'rgba(20,24,12,'},
+  {ax:.55,ay:.88,rx:.24,ry:.18,fx:.00017,fy:.00023,px:1.8,py:2.7,r:490,c:'rgba(28,32,16,'}
+];
+function mesh(t){
+  ctx.fillStyle='#1a1d0f'; ctx.fillRect(0,0,W,H);
+  pts.forEach(p=>{
+    const x=W*(p.ax+p.rx*Math.sin(p.fx*t+p.px)),y=H*(p.ay+p.ry*Math.cos(p.fy*t+p.py));
+    const g=ctx.createRadialGradient(x,y,0,x,y,p.r);
+    g.addColorStop(0,p.c+'0.36)'); g.addColorStop(.5,p.c+'0.11)'); g.addColorStop(1,p.c+'0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  });
+  const v=ctx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,H*.88);
+  v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.5)');
+  ctx.fillStyle=v; ctx.fillRect(0,0,W,H);
+}
+let t0=null; (function loop(ts){ if(!t0)t0=ts; mesh(ts-t0); requestAnimationFrame(loop); })(0);
+
+/* ── Glow follow ── */
+const gl=document.getElementById('glow');
+addEventListener('mousemove',e=>{ gl.style.left=e.clientX+'px'; gl.style.top=e.clientY+'px'; });
+
+/* ── Card entrance ── */
+const allEls=[...document.querySelectorAll('.card,.profile-hero-card')];
+allEls.forEach((c,i)=>setTimeout(()=>c.classList.add('visible'),80+i*100));
+
+/* ── Card tilt ── */
+document.querySelectorAll('.card').forEach(card=>{
+  card.addEventListener('mousemove',e=>{
+    const r=card.getBoundingClientRect(),dx=(e.clientX-r.left-r.width/2)/(r.width/2),dy=(e.clientY-r.top-r.height/2)/(r.height/2);
+    card.style.transform=`perspective(800px) rotateY(${dx*6}deg) rotateX(${-dy*6}deg) translateY(-5px) scale(1.015)`;
+    card.style.boxShadow=`${-dx*10}px ${-dy*10}px 36px rgba(217,164,65,.16),0 16px 48px rgba(0,0,0,.4)`;
+  });
+  card.addEventListener('mouseleave',()=>{
+    card.style.transition='transform .5s cubic-bezier(.34,1.56,.64,1),box-shadow .4s ease';
+    card.style.transform='perspective(800px) rotateY(0) rotateX(0) translateY(0) scale(1)';
+    card.style.boxShadow='0 8px 32px rgba(0,0,0,.35)';
+    setTimeout(()=>card.style.transition='',500);
+  });
+  card.addEventListener('mouseenter',()=>card.style.transition='transform .12s ease,box-shadow .12s ease');
+});
+
+/* ── Nav micro-movement ── */
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('mousemove',e=>{
+    const r=item.getBoundingClientRect();
+    if(!item.classList.contains('active')) item.style.transform=`translateY(${(e.clientY-r.top-r.height/2)*.12}px)`;
+  });
+  item.addEventListener('mouseleave',()=>{
+    item.style.transition='transform .4s cubic-bezier(.34,1.56,.64,1)';
+    item.style.transform='translateY(0)';
+    setTimeout(()=>item.style.transition='',400);
+  });
+});
+
+/* ══════════════════════════════════════════
+   DURATION BAR — animated to 80 / 100 (80%)
+══════════════════════════════════════════ */
+setTimeout(()=>{
+  const TARGET = 80;                         // ← 80 out of 100
+
+  // Animate the bar width
+  document.getElementById('durFill').style.width = TARGET + '%';
+
+  // Animate the counter 0 → 80
+  let v = 0;
+  const iv = setInterval(()=>{
+    v = Math.min(v + 2, TARGET);
+    document.getElementById('durPct').textContent = v + '%';
+    if(v >= TARGET) clearInterval(iv);
+  }, 18);
+}, 600);
+
+/* ── Floating particles ── */
+for(let i=0;i<10;i++){
+  const p=document.createElement('div'); p.className='particle';
+  const sz=2+Math.random()*4;
+  Object.assign(p.style,{
+    width:sz+'px',height:sz+'px',
+    left:Math.random()*100+'vw',
+    top:(60+Math.random()*40)+'vh',
+    animationDuration:(9+Math.random()*14)+'s',
+    animationDelay:Math.random()*10+'s'
+  });
+  document.body.appendChild(p);
+}
+</script>
+</body>
+</html>

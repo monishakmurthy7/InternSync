@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InternSync — Give Feedback</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#d9a441; --accent2:#f0c060;
+  --bg:#0f1209;
+  --card-bg:rgba(255,255,255,0.055);
+  --card-border:rgba(255,255,255,0.13);
+  --text:#f0ede4; --muted:rgba(240,237,228,0.45);
+  --teal:#2dd4bf; --red:#ff6b6b; --green:#4ade80;
+  --sidebar-w:240px;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; display:flex; flex-direction:column; }
+#meshCanvas{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+.glow{ position:fixed; width:500px; height:500px; background:radial-gradient(circle,rgba(217,164,65,.13),transparent 70%); border-radius:50%; pointer-events:none; filter:blur(80px); transform:translate(-50%,-50%); z-index:1; }
+
+/* NAV */
+nav{ position:relative; z-index:20; background:rgba(10,13,6,.88); backdrop-filter:blur(24px); border-bottom:1px solid rgba(255,255,255,.07); padding:14px 32px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+.nav-left,.nav-right{ display:flex; align-items:center; gap:14px; }
+.btn-logout{ padding:7px 18px; border-radius:30px; background:transparent; border:1.5px solid rgba(217,164,65,.4); color:var(--accent); font-family:'DM Sans',sans-serif; font-size:12px; cursor:pointer; transition:all .25s; }
+.btn-logout:hover{ background:rgba(217,164,65,.12); box-shadow:0 0 14px rgba(217,164,65,.22); }
+
+/* LAYOUT */
+.layout{ display:flex; flex:1; position:relative; z-index:5; }
+
+/* SIDEBAR */
+.sidebar{ width:var(--sidebar-w); flex-shrink:0; background:rgba(8,10,4,.7); backdrop-filter:blur(20px); border-right:1px solid rgba(255,255,255,.07); padding:24px 0; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:auto; }
+.sidebar::-webkit-scrollbar{ width:3px; }
+.sidebar::-webkit-scrollbar-thumb{ background:rgba(217,164,65,.15); border-radius:4px; }
+.sb-section{ font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(240,237,228,.2); padding:0 20px; margin:18px 0 8px; }
+.sb-section:first-child{ margin-top:0; }
+.nav-item{ display:flex; align-items:center; gap:11px; padding:10px 20px; cursor:pointer; color:var(--muted); font-size:13px; font-weight:500; transition:color .2s,background .2s; text-decoration:none; }
+.nav-item svg{ width:16px; height:16px; stroke:currentColor; flex-shrink:0; }
+.nav-item:hover{ color:var(--text); background:rgba(255,255,255,.04); }
+.nav-item.active{ color:var(--accent); background:rgba(217,164,65,.08); border-right:2px solid var(--accent); }
+.nav-item.active svg{ stroke:var(--accent); }
+.nav-badge{ margin-left:auto; background:var(--red); color:#fff; font-size:9px; font-family:'Syne',sans-serif; font-weight:700; border-radius:10px; padding:2px 6px; }
+
+/* MAIN */
+main{ flex:1; padding:28px 32px; overflow-y:auto; }
+.page-heading{ font-family:'Syne',sans-serif; font-size:28px; font-weight:800; margin-bottom:4px; }
+.page-heading span{ color:var(--accent); }
+.page-sub{ font-size:13px; color:var(--muted); margin-bottom:26px; }
+.section-title{ font-family:'Syne',sans-serif; font-size:12px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+.section-title::after{ content:''; flex:1; height:1px; background:rgba(217,164,65,.18); }
+
+/* CARD */
+.card{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:18px; padding:24px; backdrop-filter:blur(20px); box-shadow:0 8px 32px rgba(0,0,0,.35); position:relative; overflow:hidden; opacity:0; transform:translateY(20px); }
+.card.visible{ animation:cardIn .5s cubic-bezier(.22,1,.36,1) forwards; }
+.card::before{ content:''; position:absolute; inset:0; border-radius:18px; background:linear-gradient(135deg,rgba(217,164,65,.04),transparent 60%); pointer-events:none; }
+@keyframes cardIn{ from{opacity:0;transform:translateY(20px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.card-title{ font-family:'Syne',sans-serif; font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; }
+
+/* STATS ROW */
+.stats-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+.stat-c{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:14px 16px; display:flex; align-items:center; gap:10px; transition:transform .2s,border-color .2s; }
+.stat-c:hover{ transform:translateY(-2px); border-color:rgba(217,164,65,.2); }
+.stat-c-icon{ width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.stat-c-icon svg{ width:15px; height:15px; }
+.stat-c-val{ font-family:'Syne',sans-serif; font-size:22px; font-weight:800; line-height:1; }
+.stat-c-lbl{ font-size:10px; color:var(--muted); margin-top:2px; text-transform:uppercase; letter-spacing:.06em; }
+
+/* MAIN LAYOUT */
+.main-grid{ display:grid; grid-template-columns:1fr 1.5fr; gap:18px; margin-bottom:18px; }
+
+/* INTERN SELECTOR */
+.intern-select-list{ display:flex; flex-direction:column; gap:7px; max-height:500px; overflow-y:auto; padding-right:2px; }
+.intern-select-list::-webkit-scrollbar{ width:3px; }
+.intern-select-list::-webkit-scrollbar-thumb{ background:rgba(217,164,65,.2); border-radius:4px; }
+.isl-item{ display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); border-radius:12px; padding:11px 14px; cursor:pointer; transition:all .22s; position:relative; overflow:hidden; }
+.isl-item::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px 0 0 3px; opacity:0; transition:opacity .2s; background:var(--accent); }
+.isl-item:hover{ background:rgba(255,255,255,.07); border-color:rgba(217,164,65,.2); transform:translateX(3px); }
+.isl-item.selected{ background:rgba(217,164,65,.09); border-color:rgba(217,164,65,.32); }
+.isl-item.selected::before{ opacity:1; }
+.isl-av{ width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:13px; flex-shrink:0; overflow:hidden; }
+.isl-av img{ width:100%; height:100%; object-fit:cover; object-position:center top; display:block; border-radius:50%; }
+.isl-info{ flex:1; min-width:0; }
+.isl-name{ font-size:13px; font-weight:600; color:var(--text); }
+.isl-role{ font-size:10px; color:var(--muted); margin-top:1px; }
+.isl-right{ display:flex; flex-direction:column; align-items:flex-end; gap:3px; flex-shrink:0; }
+.isl-rating{ font-family:'Syne',sans-serif; font-size:13px; font-weight:800; }
+.isl-tag{ font-size:9px; font-family:'Syne',sans-serif; font-weight:700; padding:2px 7px; border-radius:20px; letter-spacing:.04em; }
+
+/* FEEDBACK FORM PANEL */
+.fb-panel{ display:flex; flex-direction:column; gap:14px; }
+
+/* INTERN PROFILE STRIP */
+.intern-strip{ display:flex; align-items:center; gap:14px; background:linear-gradient(135deg,rgba(217,164,65,.08),rgba(217,164,65,.02)); border:1px solid rgba(217,164,65,.18); border-radius:14px; padding:14px 18px; }
+.is-av{ width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:17px; flex-shrink:0; overflow:hidden; }
+.is-av img{ width:100%; height:100%; object-fit:cover; object-position:center top; display:block; border-radius:50%; }
+.is-info{ flex:1; }
+.is-name{ font-family:'Syne',sans-serif; font-size:16px; font-weight:800; margin-bottom:2px; }
+.is-role{ font-size:11px; color:var(--muted); }
+.is-badges{ display:flex; gap:7px; margin-top:6px; flex-wrap:wrap; }
+.is-badge{ font-size:9px; font-family:'Syne',sans-serif; font-weight:700; padding:2px 9px; border-radius:20px; letter-spacing:.05em; }
+
+/* METRIC SLIDERS */
+.metric-sliders{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.ms-label{ font-family:'Syne',sans-serif; font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
+.ms-val{ color:var(--accent); font-size:12px; }
+.ms-slider{ -webkit-appearance:none; appearance:none; width:100%; height:5px; border-radius:10px; background:rgba(255,255,255,.08); outline:none; cursor:pointer; }
+.ms-slider::-webkit-slider-thumb{ -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:var(--accent); border:2px solid #0f1209; cursor:pointer; transition:transform .15s; box-shadow:0 0 8px rgba(217,164,65,.4); }
+.ms-slider::-webkit-slider-thumb:hover{ transform:scale(1.3); }
+
+/* STAR RATING */
+.star-row{ display:flex; gap:8px; margin-top:8px; }
+.star-btn{ font-size:26px; cursor:pointer; transition:transform .15s,filter .15s; user-select:none; filter:grayscale(1) opacity(.4); }
+.star-btn.active{ filter:grayscale(0) opacity(1); transform:scale(1.15); }
+.star-btn:hover{ transform:scale(1.25); filter:grayscale(0) opacity(.8); }
+
+/* TEXTAREA */
+.fb-textarea{ width:100%; min-height:90px; padding:12px 14px; border:1px solid rgba(255,255,255,.08); border-radius:12px; background:rgba(255,255,255,.06); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; resize:vertical; outline:none; line-height:1.6; transition:border-color .2s,background .2s; }
+.fb-textarea:focus{ border-color:rgba(217,164,65,.4); background:rgba(255,255,255,.09); }
+.fb-textarea::placeholder{ color:rgba(240,237,228,.22); }
+
+/* QUICK TAGS */
+.quick-tags{ display:flex; gap:7px; flex-wrap:wrap; margin-top:6px; }
+.q-tag{ padding:5px 12px; border-radius:20px; font-size:11px; font-family:'Syne',sans-serif; font-weight:700; cursor:pointer; border:1px solid rgba(255,255,255,.1); color:var(--muted); background:transparent; transition:all .18s; letter-spacing:.04em; }
+.q-tag:hover{ border-color:rgba(217,164,65,.3); color:var(--accent); background:rgba(217,164,65,.06); }
+.q-tag.selected{ background:rgba(217,164,65,.12); border-color:rgba(217,164,65,.35); color:var(--accent); }
+
+/* IMPROVEMENT INPUT */
+.imp-add-row{ display:flex; gap:8px; }
+.imp-input{ flex:1; padding:10px 14px; border:1px solid rgba(255,255,255,.08); border-radius:10px; background:rgba(255,255,255,.06); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; outline:none; transition:all .2s; }
+.imp-input:focus{ border-color:rgba(217,164,65,.4); }
+.imp-input::placeholder{ color:rgba(240,237,228,.22); }
+.btn-add-imp{ padding:10px 16px; border-radius:10px; background:rgba(217,164,65,.12); border:1px solid rgba(217,164,65,.25); color:var(--accent); font-family:'Syne',sans-serif; font-size:12px; font-weight:700; cursor:pointer; transition:all .2s; white-space:nowrap; }
+.btn-add-imp:hover{ background:rgba(217,164,65,.22); }
+.imp-list{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+.imp-item{ display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:8px 12px; font-size:12px; color:var(--muted); }
+.imp-arrow{ color:var(--accent); font-family:'Syne',sans-serif; font-weight:700; flex-shrink:0; }
+.imp-text{ flex:1; }
+.imp-del{ width:18px; height:18px; border-radius:50%; background:rgba(255,107,107,.1); border:none; color:var(--red); cursor:pointer; font-size:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background .2s; }
+.imp-del:hover{ background:rgba(255,107,107,.25); }
+
+/* SEND BUTTON */
+.btn-send{ width:100%; padding:13px; border-radius:28px; background:var(--accent); border:2px solid transparent; color:#1a1d0f; font-family:'Syne',sans-serif; font-weight:700; font-size:13px; letter-spacing:.5px; cursor:pointer; transition:all .25s; display:flex; align-items:center; justify-content:center; gap:8px; }
+.btn-send:hover:not(:disabled){ background:transparent; border-color:var(--accent); color:var(--accent); box-shadow:0 0 24px rgba(217,164,65,.3); letter-spacing:1.2px; }
+.btn-send:disabled{ opacity:.5; cursor:not-allowed; }
+.btn-send svg{ width:15px; height:15px; stroke:currentColor; }
+
+/* FEEDBACK HISTORY */
+.fb-history{ display:flex; flex-direction:column; gap:12px; }
+.fb-hist-item{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-left:3px solid; border-radius:0 12px 12px 0; padding:14px 16px; position:relative; overflow:hidden; transition:border-color .2s,background .2s; }
+.fb-hist-item:hover{ background:rgba(255,255,255,.07); }
+.fhi-top{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.fhi-av{ width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:11px; flex-shrink:0; overflow:hidden; }
+.fhi-av img{ width:100%; height:100%; object-fit:cover; object-position:center top; display:block; border-radius:50%; }
+.fhi-name{ font-family:'Syne',sans-serif; font-size:12px; font-weight:700; color:var(--text); }
+.fhi-role{ font-size:10px; color:var(--muted); }
+.fhi-date{ font-size:10px; color:var(--muted); margin-left:auto; }
+.fhi-stars{ display:flex; gap:2px; }
+.fhi-star{ font-size:12px; }
+.fhi-text{ font-size:12px; color:var(--muted); line-height:1.6; margin-bottom:10px; }
+.fhi-tags{ display:flex; gap:5px; flex-wrap:wrap; }
+.fhi-tag{ font-size:9px; font-family:'Syne',sans-serif; font-weight:700; padding:2px 8px; border-radius:20px; letter-spacing:.04em; }
+.fhi-metrics{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px; }
+.fhi-metric{ text-align:center; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:6px; }
+.fhi-metric-val{ font-family:'Syne',sans-serif; font-size:13px; font-weight:800; color:var(--accent); }
+.fhi-metric-lbl{ font-size:9px; color:var(--muted); margin-top:2px; text-transform:uppercase; letter-spacing:.05em; }
+
+/* LOADING SKELETON */
+.skeleton{ background:rgba(255,255,255,.06); border-radius:8px; animation:shimmer 1.4s ease-in-out infinite; }
+@keyframes shimmer{ 0%,100%{opacity:.5} 50%{opacity:1} }
+
+/* EMPTY STATE */
+.empty-fb{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:48px 20px; text-align:center; }
+.empty-fb svg{ width:44px; height:44px; stroke:rgba(217,164,65,.25); margin-bottom:12px; }
+.empty-fb h3{ font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:var(--muted); margin-bottom:5px; }
+.empty-fb p{ font-size:12px; color:rgba(240,237,228,.28); }
+
+/* TOAST */
+.toast{ position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); background:rgba(18,22,10,.97); border:1px solid rgba(217,164,65,.35); color:#fff; padding:11px 22px; border-radius:30px; font-size:13px; opacity:0; pointer-events:none; transition:opacity .3s,transform .3s; z-index:9999; white-space:nowrap; }
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.toast.error{ border-color:rgba(255,107,107,.5); }
+.particle{ position:fixed; border-radius:50%; background:rgba(217,164,65,.12); pointer-events:none; z-index:2; animation:floatUp linear infinite; }
+@keyframes floatUp{ 0%{transform:translateY(0) scale(1);opacity:.4} 50%{transform:translateY(-70px) scale(1.1);opacity:.15} 100%{transform:translateY(-140px) scale(.8);opacity:0} }
+#confettiCanvas{ position:fixed; inset:0; z-index:9998; pointer-events:none; }
+</style>
+</head>
+<body>
+  <script src="mentor-nav.js"></script>
+<canvas id="meshCanvas"></canvas>
+<canvas id="confettiCanvas"></canvas>
+<div class="glow" id="glow"></div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sb-section">Overview</div>
+    <a class="nav-item" href="mentor-dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" href="mentor-profile.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      My Profile
+    </a>
+    <a class="nav-item" href="mentor-interns.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      My Interns
+    </a>
+    <a class="nav-item" href="mentor-attendance.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 16 11 18 15 14"/></svg>
+      Attendance
+    </a>
+    <div class="sb-section">Tasks</div>
+    <a class="nav-item" href="mentor-assign.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Assign Tasks
+      <span class="nav-badge">3</span>
+    </a>
+    <a class="nav-item" href="mentor-submissions.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Submissions
+      <span class="nav-badge">5</span>
+    </a>
+    <a class="nav-item active" href="mentor-feedback.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Give Feedback
+    </a>
+    <div class="sb-section">Manage</div>
+    <a class="nav-item" href="mentor-leave.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      Leave Requests
+      <span class="nav-badge">2</span>
+    </a>
+    <a class="nav-item" href="mentor-content.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+      Manage Content
+    </a>
+    <a class="nav-item" href="mentor-certificate.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+      Certificates
+    </a>
+    <div class="sb-section">Communication</div>
+    <a class="nav-item" href="mentor-pvtchat.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>
+      Chat with Interns
+    </a>
+  </aside>
+
+  <main>
+    <div class="page-heading">Give <span>Feedback</span></div>
+    <div class="page-sub">Rate performance, write detailed feedback and set improvement goals for your interns.</div>
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-c">
+        <div class="stat-c-icon" style="background:rgba(217,164,65,.15);border:1px solid rgba(217,164,65,.2)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+        <div><div class="stat-c-val" style="color:var(--accent)" id="stTotal">—</div><div class="stat-c-lbl">Total Sent</div></div>
+      </div>
+      <div class="stat-c">
+        <div class="stat-c-icon" style="background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.2)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div><div class="stat-c-val" style="color:var(--teal)" id="stThisWeek">—</div><div class="stat-c-lbl">This Week</div></div>
+      </div>
+      <div class="stat-c">
+        <div class="stat-c-icon" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.2)"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+        <div><div class="stat-c-val" style="color:#fbbf24" id="stAvgRating">—</div><div class="stat-c-lbl">Avg Rating</div></div>
+      </div>
+      <div class="stat-c">
+        <div class="stat-c-icon" style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+        <div><div class="stat-c-val" style="color:var(--green)" id="stCovered">—</div><div class="stat-c-lbl">Interns Covered</div></div>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="main-grid">
+      <div class="card" id="c1">
+        <div class="card-title">Select Intern <span id="internListLabel" style="color:var(--teal);font-size:10px;"></span></div>
+        <div class="intern-select-list" id="internSelectList">
+          <!-- skeleton while loading -->
+          <div class="skeleton" style="height:58px;border-radius:12px;"></div>
+          <div class="skeleton" style="height:58px;border-radius:12px;"></div>
+          <div class="skeleton" style="height:58px;border-radius:12px;"></div>
+        </div>
+      </div>
+      <div class="card" id="c2">
+        <div id="fbFormPanel">
+          <div class="empty-fb">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <h3>Select an Intern</h3>
+            <p>Choose an intern from the list to write and send them feedback.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FEEDBACK HISTORY -->
+    <div class="section-title">Feedback History</div>
+    <div class="card" id="c3">
+      <div class="card-title">All Sent Feedback <span id="histCount" style="color:var(--accent);font-size:10px;"></span></div>
+      <div id="fbHistoryList">
+        <div class="skeleton" style="height:140px;border-radius:12px;margin-bottom:12px;"></div>
+        <div class="skeleton" style="height:140px;border-radius:12px;"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+const API_BASE = window.location.port === '3000' ? '' : 'http://localhost:3000';
+const MENTOR_ID = 1;
+// PHOTO MAP
+// ═══════════════════════════════════════════════════════════
+const photoMap = {
+  'Monisha K':     '../images/monisha.jpeg',
+  'Fiona Shalet':  '../images/fiona.jpeg',
+  'Stella Mary':   '../images/stella.jpeg',
+  'Bhavana R':     '../images/bhavana.jpeg',
+  'Deekshitha S':  '../images/deekshitha.jpeg',
+  'Arun Prasad':   '../images/arun.jpeg',
+  'Shonn Dias':    '../images/shonn.jpeg',
+  'Bhoomika Ravi': '../images/bhoomika.jpeg',
+  'Hrithika Gowda':'../images/hrithika.jpeg',
+  'Vinay Kumar':   '../images/vinay.jpeg',
+};
+
+function avHTML(name, fallback) {
+  const url = photoMap[name];
+  if (url) return `<img src="${url}" alt="${name}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;object-position:center top;border-radius:50%;display:block;">`;
+  return fallback;
+}
+
+// ═══════════════════════════════════════════════════════════
+// INTERN METADATA (visual/role/status — not stored in DB)
+// ═══════════════════════════════════════════════════════════
+const INTERN_META = {
+  'Monisha K':      { role:'Full Stack Intern',  color:'#d9a441', bg:'rgba(217,164,65',  pct:62, status:'active'  },
+  'Fiona Shalet':   { role:'Frontend Intern',    color:'#2dd4bf', bg:'rgba(45,212,191',  pct:78, status:'active'  },
+  'Stella Mary':    { role:'Backend Intern',     color:'#ff6b6b', bg:'rgba(255,107,107', pct:45, status:'behind'  },
+  'Bhavana R':      { role:'Full Stack Intern',  color:'#4ade80', bg:'rgba(74,222,128',  pct:85, status:'active'  },
+  'Deekshitha S':   { role:'UI/UX Intern',       color:'#c084fc', bg:'rgba(168,85,247',  pct:55, status:'active'  },
+  'Arun Prasad':    { role:'Backend Intern',     color:'#fbbf24', bg:'rgba(251,191,36',  pct:70, status:'active'  },
+  'Shonn Dias':     { role:'Full Stack Intern',  color:'#38bdf8', bg:'rgba(56,189,248',  pct:38, status:'risk'    },
+  'Bhoomika Ravi':  { role:'Frontend Intern',    color:'#fb7185', bg:'rgba(251,113,133', pct:91, status:'active'  },
+  'Hrithika Gowda': { role:'Backend Intern',     color:'#818cf8', bg:'rgba(99,102,241',  pct:50, status:'behind'  },
+  'Vinay Kumar':    { role:'Full Stack Intern',  color:'#2dd4bf', bg:'rgba(20,184,166',  pct:74, status:'active'  },
+};
+
+// intern_id map — must match your users table
+const INTERN_ID_MAP = {
+  'Monisha K':      19,
+  'Fiona Shalet':   20,
+  'Stella Mary':    21,
+  'Bhavana R':      22,
+  'Deekshitha S':   23,
+  'Arun Prasad':    24,
+  'Shonn Dias':     25,
+  'Bhoomika Ravi':  26,
+  'Hrithika Gowda': 27,
+  'Vinay Kumar':    28,
+};
+
+const STATUS_CFG = {
+  active:{ label:'Active',  c:'var(--teal)',   bg:'rgba(45,212,191,.1)',   b:'rgba(45,212,191,.2)'  },
+  behind:{ label:'Behind',  c:'var(--accent)', bg:'rgba(217,164,65,.1)',   b:'rgba(217,164,65,.2)'  },
+  risk:  { label:'At Risk', c:'var(--red)',    bg:'rgba(255,107,107,.1)',  b:'rgba(255,107,107,.2)' },
+};
+
+const QUICK_TAGS = ['Great Work','On Track','Needs Improvement','Strong Code','Creative','Falling Behind','Excellent UI','Top Performer','Communication','Strong SQL'];
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let fbHistory       = [];        // loaded from DB
+let fbCountByIntern = {};        // { internName: count }
+let lastRatingByIntern = {};     // { internName: rating }
+let selectedIntern  = null;
+let currentRating   = 0;
+let improvements    = [];
+let selectedTags    = [];
+let isSending       = false;
+
+// ═══════════════════════════════════════════════════════════
+// API HELPERS
+// ═══════════════════════════════════════════════════════════
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) throw new Error(data.message || 'API error');
+  return data;
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOAD FEEDBACK FROM DB
+// ═══════════════════════════════════════════════════════════
+async function loadFeedback() {
+  try {
+    const data = await apiFetch(`/api/feedback?mentor_id=${MENTOR_ID}`);
+    fbHistory = data.feedback.map(f => ({
+      ...f,
+      intern: f.intern_name,
+      color:  (INTERN_META[f.intern_name] || {}).color || '#d9a441',
+      bg:     (INTERN_META[f.intern_name] || {}).bg    || 'rgba(217,164,65',
+      role:   (INTERN_META[f.intern_name] || {}).role  || 'Intern',
+      date:   formatDate(f.created_at),
+      metrics: {
+        efficiency:    f.efficiency,
+        punctuality:   f.punctuality,
+        codeQuality:   f.codeQuality || f.code_quality,
+        communication: f.communication,
+      },
+    }));
+
+    // Build derived maps
+    fbCountByIntern = {};
+    lastRatingByIntern = {};
+    fbHistory.forEach(f => {
+      const n = f.intern;
+      fbCountByIntern[n] = (fbCountByIntern[n] || 0) + 1;
+      if (!lastRatingByIntern[n]) lastRatingByIntern[n] = f.rating; // already sorted DESC
+    });
+
+    renderHistory();
+    await loadStats();
+    renderInternList();
+  } catch (err) {
+    console.error('loadFeedback:', err);
+    showToast('⚠ Could not load feedback from server', true);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOAD STATS FROM DB
+// ═══════════════════════════════════════════════════════════
+async function loadStats() {
+  try {
+    const data = await apiFetch(`/api/feedback/stats?mentor_id=${MENTOR_ID}`);
+    const s = data.stats;
+    animCount('stTotal',   parseInt(s.total)           || 0);
+    animCount('stThisWeek',parseInt(s.this_week)        || 0);
+    animCount('stCovered', parseInt(s.interns_covered)  || 0);
+    document.getElementById('stAvgRating').textContent = s.avg_rating || '0';
+  } catch {
+    // fallback — compute from local fbHistory
+    const total   = fbHistory.length;
+    const covered = Object.keys(fbCountByIntern).length;
+    const avg     = total ? (fbHistory.reduce((s,f)=>s+f.rating,0)/total).toFixed(1) : '0';
+    const week    = fbHistory.filter(f=>{ const d=new Date(f.created_at||f.date),n=new Date(); return (n-d)<7*864e5; }).length;
+    animCount('stTotal', total); animCount('stThisWeek', week); animCount('stCovered', covered);
+    document.getElementById('stAvgRating').textContent = avg;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER INTERN LIST
+// ═══════════════════════════════════════════════════════════
+function renderInternList() {
+  const names = Object.keys(INTERN_META);
+  document.getElementById('internListLabel').textContent = names.length + ' interns';
+  document.getElementById('internSelectList').innerHTML = names.map(name => {
+    const i   = INTERN_META[name];
+    const ini = name.split(' ').map(w=>w[0]).join('').slice(0,2);
+    const sc  = STATUS_CFG[i.status];
+    const cnt = fbCountByIntern[name] || 0;
+    const lr  = lastRatingByIntern[name] || 0;
+    const sel = selectedIntern === name;
+    return `
+      <div class="isl-item${sel?' selected':''}" onclick="selectIntern('${name}')">
+        <div class="isl-av" style="background:linear-gradient(135deg,${i.bg},.3),${i.bg},.08));color:${i.color};">${avHTML(name, ini)}</div>
+        <div class="isl-info">
+          <div class="isl-name">${name}</div>
+          <div class="isl-role">${i.role} · ${cnt} feedback${cnt!==1?'s':''}</div>
+        </div>
+        <div class="isl-right">
+          ${lr ? `<div class="isl-rating" style="color:${i.color}">${'⭐'.repeat(lr)}</div>` : ''}
+          <span class="isl-tag" style="background:${sc.bg};border:1px solid ${sc.b};color:${sc.c};">${sc.label}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// SELECT INTERN
+// ═══════════════════════════════════════════════════════════
+function selectIntern(name) {
+  selectedIntern = name;
+  currentRating  = 0;
+  improvements   = [];
+  selectedTags   = [];
+  renderInternList();
+  renderFbForm(name);
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER FEEDBACK FORM
+// ═══════════════════════════════════════════════════════════
+function renderFbForm(name) {
+  const i   = INTERN_META[name];
+  const ini = name.split(' ').map(w=>w[0]).join('').slice(0,2);
+  const sc  = STATUS_CFG[i.status];
+
+  document.getElementById('fbFormPanel').innerHTML = `
+    <div class="fb-panel">
+      <!-- INTERN STRIP -->
+      <div class="intern-strip">
+        <div class="is-av" style="background:linear-gradient(135deg,${i.bg},.3),${i.bg},.08));color:${i.color};border:2px solid ${i.color}44;">${avHTML(name, ini)}</div>
+        <div class="is-info">
+          <div class="is-name" style="color:${i.color}">${name}</div>
+          <div class="is-role">${i.role} · IBM SkillsBuild × InternSync</div>
+          <div class="is-badges">
+            <span class="is-badge" style="background:${sc.bg};border:1px solid ${sc.b};color:${sc.c};">${sc.label}</span>
+            <span class="is-badge" style="background:rgba(217,164,65,.1);border:1px solid rgba(217,164,65,.2);color:var(--accent);">Progress: ${i.pct}%</span>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Overall Progress</div>
+          <div style="position:relative;display:inline-block;">
+            <svg width="64" height="64" style="transform:rotate(-90deg)">
+              <defs><linearGradient id="pg${name.replace(/ /g,'')}"><stop offset="0%" stop-color="${i.color}"/><stop offset="100%" stop-color="${i.color}88"/></linearGradient></defs>
+              <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="6"/>
+              <circle cx="32" cy="32" r="26" fill="none" stroke="url(#pg${name.replace(/ /g,'')})" stroke-width="6" stroke-linecap="round"
+                stroke-dasharray="${2*Math.PI*26}" stroke-dashoffset="${2*Math.PI*26*(1-i.pct/100)}"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:12px;font-weight:800;color:${i.color};">${i.pct}%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAR RATING -->
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">Overall Rating</div>
+        <div class="star-row" id="starRow">
+          ${[1,2,3,4,5].map(n=>`<div class="star-btn" data-n="${n}" onclick="setRating(${n})">⭐</div>`).join('')}
+        </div>
+      </div>
+
+      <!-- METRIC SLIDERS -->
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Performance Metrics</div>
+        <div class="metric-sliders">
+          <div>
+            <div class="ms-label">Efficiency <span class="ms-val" id="slv-eff">70%</span></div>
+            <input type="range" class="ms-slider" id="sl-eff" min="0" max="100" value="70" oninput="document.getElementById('slv-eff').textContent=this.value+'%'">
+          </div>
+          <div>
+            <div class="ms-label">Punctuality <span class="ms-val" id="slv-pun">80%</span></div>
+            <input type="range" class="ms-slider" id="sl-pun" min="0" max="100" value="80" oninput="document.getElementById('slv-pun').textContent=this.value+'%'">
+          </div>
+          <div>
+            <div class="ms-label">Code Quality <span class="ms-val" id="slv-cq">75%</span></div>
+            <input type="range" class="ms-slider" id="sl-cq" min="0" max="100" value="75" oninput="document.getElementById('slv-cq').textContent=this.value+'%'">
+          </div>
+          <div>
+            <div class="ms-label">Communication <span class="ms-val" id="slv-com">72%</span></div>
+            <input type="range" class="ms-slider" id="sl-com" min="0" max="100" value="72" oninput="document.getElementById('slv-com').textContent=this.value+'%'">
+          </div>
+        </div>
+      </div>
+
+      <!-- QUICK TAGS -->
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Quick Tags</div>
+        <div class="quick-tags">
+          ${QUICK_TAGS.map(t=>`<div class="q-tag" onclick="toggleTag(this,'${t}')">${t}</div>`).join('')}
+        </div>
+      </div>
+
+      <!-- FEEDBACK TEXT -->
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Written Feedback</div>
+        <textarea class="fb-textarea" id="fbTextarea" placeholder="Write detailed, constructive feedback for ${name.split(' ')[0]}…"></textarea>
+      </div>
+
+      <!-- IMPROVEMENT POINTS -->
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Areas of Improvement</div>
+        <div class="imp-add-row">
+          <input class="imp-input" type="text" id="impInput" placeholder="Add an improvement point…" onkeydown="if(event.key==='Enter')addImprovement()">
+          <button class="btn-add-imp" onclick="addImprovement()">+ Add</button>
+        </div>
+        <div class="imp-list" id="impList"></div>
+      </div>
+
+      <!-- SEND BUTTON -->
+      <button class="btn-send" id="btnSend" onclick="sendFeedback()">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+        Send Feedback to ${name.split(' ')[0]}
+      </button>
+    </div>
+  `;
+  renderStars();
+}
+
+// ═══════════════════════════════════════════════════════════
+// STARS / TAGS / IMPROVEMENTS
+// ═══════════════════════════════════════════════════════════
+function setRating(n) { currentRating = n; renderStars(); }
+function renderStars() {
+  document.querySelectorAll('.star-btn').forEach((s, i) => s.classList.toggle('active', i < currentRating));
+}
+
+function toggleTag(el, tag) {
+  const idx = selectedTags.indexOf(tag);
+  if (idx > -1) { selectedTags.splice(idx,1); el.classList.remove('selected'); }
+  else { selectedTags.push(tag); el.classList.add('selected'); }
+}
+
+function addImprovement() {
+  const inp = document.getElementById('impInput');
+  const val = inp.value.trim();
+  if (!val) return;
+  improvements.push(val); inp.value = '';
+  renderImprovements();
+}
+function removeImprovement(idx) { improvements.splice(idx, 1); renderImprovements(); }
+function renderImprovements() {
+  document.getElementById('impList').innerHTML = improvements.map((imp, i) => `
+    <div class="imp-item">
+      <span class="imp-arrow">→</span>
+      <span class="imp-text">${imp}</span>
+      <button class="imp-del" onclick="removeImprovement(${i})">✕</button>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// SEND FEEDBACK → POST to DB
+// ═══════════════════════════════════════════════════════════
+async function sendFeedback() {
+  if (!selectedIntern)  { showToast('⚠ Please select an intern first', true); return; }
+  if (!currentRating)   { showToast('⚠ Please give a star rating', true); return; }
+  const text = document.getElementById('fbTextarea').value.trim();
+  if (!text) { showToast('⚠ Please write some feedback', true); return; }
+  if (isSending) return;
+
+  const internId = INTERN_ID_MAP[selectedIntern];
+  if (!internId) { showToast('⚠ Could not resolve intern ID', true); return; }
+
+  isSending = true;
+  const btn = document.getElementById('btnSend');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+
+  try {
+    const payload = {
+      mentor_id:     MENTOR_ID,
+      intern_id:     internId,
+      message:       text,
+      rating:        currentRating,
+      tags:          [...selectedTags],
+      improvements:  [...improvements],
+      efficiency:    parseInt(document.getElementById('sl-eff').value),
+      punctuality:   parseInt(document.getElementById('sl-pun').value),
+      codeQuality:   parseInt(document.getElementById('sl-cq').value),
+      communication: parseInt(document.getElementById('sl-com').value),
+    };
+
+    const data = await apiFetch('/api/feedback', {
+      method: 'POST',
+      body:   JSON.stringify(payload),
+    });
+
+    // Prepend to local history with enriched fields
+    const f = data.feedback;
+    const meta = INTERN_META[selectedIntern] || {};
+    fbHistory.unshift({
+      ...f,
+      intern:  selectedIntern,
+      color:   meta.color || '#d9a441',
+      bg:      meta.bg    || 'rgba(217,164,65',
+      role:    meta.role  || 'Intern',
+      date:    formatDate(f.created_at),
+      metrics: {
+        efficiency:    f.efficiency,
+        punctuality:   f.punctuality,
+        codeQuality:   f.codeQuality || f.code_quality,
+        communication: f.communication,
+      },
+    });
+
+    // Update counters
+    fbCountByIntern[selectedIntern]  = (fbCountByIntern[selectedIntern] || 0) + 1;
+    lastRatingByIntern[selectedIntern] = currentRating;
+
+    renderHistory();
+    await loadStats();
+    renderInternList();
+    spawnConfetti();
+    showToast(`✓ Feedback saved to database for ${selectedIntern.split(' ')[0]}!`);
+    currentRating = 0; improvements = []; selectedTags = [];
+    renderFbForm(selectedIntern);
+
+  } catch (err) {
+    console.error('sendFeedback:', err);
+    showToast('⚠ Failed to save: ' + err.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+  } finally {
+    isSending = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER HISTORY
+// ═══════════════════════════════════════════════════════════
+function renderHistory() {
+  const el = document.getElementById('fbHistoryList');
+  document.getElementById('histCount').textContent = fbHistory.length + ' records';
+
+  if (!fbHistory.length) {
+    el.innerHTML = `<div class="empty-fb"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><h3>No Feedback Yet</h3><p>Send your first feedback to get started.</p></div>`;
+    return;
+  }
+
+  el.innerHTML = `<div class="fb-history">${fbHistory.map(f => {
+    const ini    = f.intern.split(' ').map(w=>w[0]).join('').slice(0,2);
+    const tagHTML = (f.tags||[]).map(t => `<span class="fhi-tag" style="background:rgba(217,164,65,.1);border:1px solid rgba(217,164,65,.2);color:var(--accent);">${t}</span>`).join('');
+    const impArr  = f.improvements || [];
+    const impHTML = impArr.length ? `<div style="margin-top:10px;"><div style="font-size:9px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Improvement Areas</div>${impArr.map(imp=>`<div style="font-size:11px;color:var(--muted);margin-bottom:3px;display:flex;gap:6px;"><span style="color:var(--accent);font-weight:700;">→</span>${imp}</div>`).join('')}</div>` : '';
+    const m = f.metrics || {};
+    return `
+      <div class="fb-hist-item" style="border-left-color:${f.color};">
+        <div class="fhi-top">
+          <div class="fhi-av" style="background:linear-gradient(135deg,${f.bg},.3),${f.bg},.08));color:${f.color};">${avHTML(f.intern, ini)}</div>
+          <div>
+            <div class="fhi-name">${f.intern}</div>
+            <div class="fhi-role">${f.role}</div>
+          </div>
+          <div class="fhi-stars">${'⭐'.repeat(f.rating)}${'☆'.repeat(5-f.rating)}</div>
+          <div class="fhi-date">${f.date}</div>
+        </div>
+        <div class="fhi-text">"${f.message || f.text}"</div>
+        ${tagHTML ? `<div class="fhi-tags">${tagHTML}</div>` : ''}
+        <div class="fhi-metrics">
+          <div class="fhi-metric"><div class="fhi-metric-val">${m.efficiency||0}%</div><div class="fhi-metric-lbl">Efficiency</div></div>
+          <div class="fhi-metric"><div class="fhi-metric-val">${m.punctuality||0}%</div><div class="fhi-metric-lbl">Punctuality</div></div>
+          <div class="fhi-metric"><div class="fhi-metric-val">${m.codeQuality||0}%</div><div class="fhi-metric-lbl">Code</div></div>
+          <div class="fhi-metric"><div class="fhi-metric-val">${m.communication||0}%</div><div class="fhi-metric-lbl">Comms</div></div>
+        </div>
+        ${impHTML}
+      </div>`;
+  }).join('')}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
+function formatDate(raw) {
+  if (!raw) return '';
+  const d = new Date(raw);
+  if (isNaN(d)) return raw;
+  const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${M[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+function animCount(id, target) {
+  const el = document.getElementById(id);
+  let v = 0;
+  const step = Math.ceil(target / 20) || 1;
+  const iv = setInterval(() => {
+    v = Math.min(v + step, target);
+    el.textContent = v;
+    if (v >= target) clearInterval(iv);
+  }, 30);
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.toggle('error', isError);
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function spawnConfetti() {
+  const sc = document.getElementById('confettiCanvas');
+  sc.width = innerWidth; sc.height = innerHeight;
+  const c = sc.getContext('2d');
+  const COLS = ['#d9a441','#f0c060','#2dd4bf','#4ade80','#c084fc'];
+  const parts = Array.from({length:25},(_,i)=>{ const angle=(i/25)*Math.PI*2+(Math.random()-.5)*.4,spd=2+Math.random()*3; return{x:innerWidth*.6,y:innerHeight*.3,vx:Math.cos(angle)*spd,vy:Math.sin(angle)*spd-2,color:COLS[i%COLS.length],size:3+Math.random()*3,rot:Math.random()*Math.PI*2,rotV:(Math.random()-.5)*.15,gravity:.06+Math.random()*.03}; });
+  let frame = 0; const TOTAL = 60;
+  (function tick(){ c.clearRect(0,0,sc.width,sc.height); frame++; const t=frame/TOTAL;
+    parts.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=p.gravity; p.vx*=.97; p.rot+=p.rotV;
+      const alpha=Math.max(0,1-t*1.1); c.save(); c.globalAlpha=alpha; c.translate(p.x,p.y); c.rotate(p.rot);
+      const g=c.createRadialGradient(0,0,0,0,0,p.size); g.addColorStop(0,'#fff'); g.addColorStop(.4,p.color); g.addColorStop(1,'transparent');
+      c.fillStyle=g; c.beginPath(); c.arc(0,0,p.size,0,Math.PI*2); c.fill(); c.restore(); });
+    if(frame<TOTAL) requestAnimationFrame(tick); else c.clearRect(0,0,sc.width,sc.height);
+  })();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MESH BACKGROUND
+// ═══════════════════════════════════════════════════════════
+const cvs=document.getElementById('meshCanvas'),ctx=cvs.getContext('2d');
+let W,H; function rsz(){ W=cvs.width=innerWidth; H=cvs.height=innerHeight; } rsz(); addEventListener('resize',rsz);
+const pts=[{ax:.65,ay:.25,rx:.3,ry:.2,fx:.00028,fy:.00016,px:0,py:1,r:620,c:'rgba(180,120,20,'},{ax:.2,ay:.65,rx:.22,ry:.28,fx:.00018,fy:.00026,px:2.4,py:0,r:540,c:'rgba(155,100,15,'},{ax:.5,ay:.1,rx:.28,ry:.2,fx:.00022,fy:.00014,px:1,py:2,r:580,c:'rgba(50,65,20,'},{ax:.88,ay:.78,rx:.2,ry:.22,fx:.00013,fy:.00031,px:.5,py:.8,r:500,c:'rgba(44,58,18,'},{ax:.08,ay:.18,rx:.18,ry:.22,fx:.00025,fy:.0002,px:3,py:1.5,r:460,c:'rgba(20,24,12,'},{ax:.55,ay:.88,rx:.24,ry:.18,fx:.00017,fy:.00023,px:1.8,py:2.7,r:490,c:'rgba(28,32,16,'}];
+function mesh(t){ ctx.fillStyle='#0f1209'; ctx.fillRect(0,0,W,H); pts.forEach(p=>{ const x=W*(p.ax+p.rx*Math.sin(p.fx*t+p.px)),y=H*(p.ay+p.ry*Math.cos(p.fy*t+p.py)),g=ctx.createRadialGradient(x,y,0,x,y,p.r); g.addColorStop(0,p.c+'0.28)'); g.addColorStop(.5,p.c+'0.08)'); g.addColorStop(1,p.c+'0)'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }); const v=ctx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,H*.88); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.55)'); ctx.fillStyle=v; ctx.fillRect(0,0,W,H); }
+let t0=null; (function loop(ts){ if(!t0)t0=ts; mesh(ts-t0); requestAnimationFrame(loop); })(0);
+
+const gl=document.getElementById('glow'); addEventListener('mousemove',e=>{ gl.style.left=e.clientX+'px'; gl.style.top=e.clientY+'px'; });
+
+document.querySelectorAll('.card').forEach((c,i)=>{
+  setTimeout(()=>c.classList.add('visible'),100+i*120);
+  c.addEventListener('mousemove',e=>{ const r=c.getBoundingClientRect(),dx=(e.clientX-r.left-r.width/2)/(r.width/2),dy=(e.clientY-r.top-r.height/2)/(r.height/2); c.style.transform=`perspective(900px) rotateY(${dx*3}deg) rotateX(${-dy*3}deg) translateY(-3px) scale(1.005)`; c.style.boxShadow=`${-dx*8}px ${-dy*8}px 24px rgba(217,164,65,.1),0 12px 36px rgba(0,0,0,.4)`; });
+  c.addEventListener('mouseleave',()=>{ c.style.transition='transform .5s cubic-bezier(.34,1.56,.64,1),box-shadow .4s ease'; c.style.transform='perspective(900px) rotateY(0) rotateX(0) translateY(0) scale(1)'; c.style.boxShadow='0 8px 32px rgba(0,0,0,.35)'; setTimeout(()=>c.style.transition='',500); });
+  c.addEventListener('mouseenter',()=>c.style.transition='transform .12s ease,box-shadow .12s ease');
+});
+
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('mousemove',e=>{ const r=item.getBoundingClientRect(); if(!item.classList.contains('active')) item.style.transform=`translateY(${(e.clientY-r.top-r.height/2)*.1}px)`; });
+  item.addEventListener('mouseleave',()=>{ item.style.transition='transform .4s cubic-bezier(.34,1.56,.64,1)'; item.style.transform='translateY(0)'; setTimeout(()=>item.style.transition='',400); });
+});
+
+for(let i=0;i<10;i++){ const p=document.createElement('div'); p.className='particle'; const sz=2+Math.random()*4; Object.assign(p.style,{width:sz+'px',height:sz+'px',left:Math.random()*100+'vw',top:(60+Math.random()*40)+'vh',animationDuration:(9+Math.random()*14)+'s',animationDelay:Math.random()*10+'s'}); document.body.appendChild(p); }
+
+// ═══════════════════════════════════════════════════════════
+// INIT — load from DB, then select first intern
+// ═══════════════════════════════════════════════════════════
+(async () => {
+  await loadFeedback();
+  setTimeout(() => selectIntern('Monisha K'), 300);
+})();
+</script>
+</body>
+</html>

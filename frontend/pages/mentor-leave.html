@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InternSync — Leave Requests</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#d9a441; --accent2:#f0c060; --bg:#0f1209;
+  --card-bg:rgba(255,255,255,0.055); --card-border:rgba(255,255,255,0.13);
+  --text:#f0ede4; --muted:rgba(240,237,228,0.45);
+  --teal:#2dd4bf; --red:#ff6b6b; --green:#4ade80; --sidebar-w:240px;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+body{ font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; display:flex; flex-direction:column; }
+#meshCanvas{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+.glow{ position:fixed; width:600px; height:600px; background:radial-gradient(circle,rgba(217,164,65,.12),transparent 70%); border-radius:50%; pointer-events:none; filter:blur(90px); transform:translate(-50%,-50%); z-index:1; transition:left .08s,top .08s; }
+.layout{ display:flex; flex:1; position:relative; z-index:5; }
+.sidebar{ width:var(--sidebar-w); flex-shrink:0; background:rgba(8,10,4,.75); backdrop-filter:blur(20px); border-right:1px solid rgba(255,255,255,.07); padding:24px 0; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:auto; }
+.sidebar::-webkit-scrollbar{ width:3px; }
+.sidebar::-webkit-scrollbar-thumb{ background:rgba(217,164,65,.15); border-radius:4px; }
+.sidebar-section{ font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(240,237,228,.2); padding:0 20px; margin:18px 0 8px; }
+.nav-item{ display:flex; align-items:center; gap:11px; padding:10px 20px; cursor:pointer; color:var(--muted); font-size:13px; font-weight:500; transition:color .2s,background .2s; text-decoration:none; position:relative; }
+.nav-item svg{ width:16px; height:16px; stroke:currentColor; flex-shrink:0; }
+.nav-item:hover{ color:var(--text); background:rgba(255,255,255,.04); }
+.nav-item.active{ color:var(--accent); background:rgba(217,164,65,.08); border-right:2px solid var(--accent); }
+.nav-item.active svg{ stroke:var(--accent); }
+.nav-badge{ margin-left:auto; background:var(--red); color:#fff; font-size:9px; font-family:'Syne',sans-serif; font-weight:700; border-radius:10px; padding:2px 6px; }
+main{ flex:1; padding:32px 36px; overflow-y:auto; }
+.page-header{ display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:32px; opacity:0; animation:fadeUp .6s .1s cubic-bezier(.22,1,.36,1) forwards; }
+.page-eyebrow{ font-family:'Syne',sans-serif; font-size:10px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); margin-bottom:6px; }
+.page-title{ font-family:'Syne',sans-serif; font-size:30px; font-weight:800; line-height:1.1; }
+.page-title span{ color:var(--accent); }
+.page-sub{ font-size:13px; color:var(--muted); margin-top:5px; }
+.stats-bar{ display:flex; gap:14px; margin-bottom:30px; opacity:0; animation:fadeUp .6s .2s cubic-bezier(.22,1,.36,1) forwards; }
+.stat-pill{ display:flex; align-items:center; gap:10px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:12px 18px; backdrop-filter:blur(16px); flex:1; transition:transform .2s,border-color .2s; }
+.stat-pill:hover{ transform:translateY(-2px); border-color:rgba(217,164,65,.25); }
+.stat-pill-icon{ width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.stat-pill-icon svg{ width:15px; height:15px; }
+.spi-orange{ background:rgba(217,164,65,.15); border:1px solid rgba(217,164,65,.2); }
+.spi-orange svg{ stroke:var(--accent); }
+.spi-teal{ background:rgba(45,212,191,.12); border:1px solid rgba(45,212,191,.2); }
+.spi-teal svg{ stroke:var(--teal); }
+.spi-red{ background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.2); }
+.spi-red svg{ stroke:var(--red); }
+.spi-green{ background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.2); }
+.spi-green svg{ stroke:var(--green); }
+.stat-pill-num{ font-family:'Syne',sans-serif; font-size:22px; font-weight:800; line-height:1; }
+.stat-pill-lbl{ font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; margin-top:1px; }
+.filter-row{ display:flex; align-items:center; gap:8px; margin-bottom:26px; opacity:0; animation:fadeUp .6s .3s cubic-bezier(.22,1,.36,1) forwards; }
+.filter-tab{ padding:7px 18px; border-radius:30px; font-family:'Syne',sans-serif; font-size:11px; font-weight:700; letter-spacing:.05em; cursor:pointer; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.04); color:var(--muted); transition:all .2s; }
+.filter-tab:hover{ color:var(--text); border-color:rgba(255,255,255,.15); }
+.filter-tab.active{ background:rgba(217,164,65,.12); border-color:rgba(217,164,65,.35); color:var(--accent); }
+.filter-count{ font-size:9px; background:rgba(217,164,65,.2); color:var(--accent); padding:1px 6px; border-radius:10px; margin-left:4px; font-weight:800; }
+.leave-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:20px; }
+.leave-card{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:22px; overflow:hidden; position:relative; backdrop-filter:blur(20px); box-shadow:0 8px 40px rgba(0,0,0,.4); transform-style:preserve-3d; transition:box-shadow .3s,border-color .3s; opacity:0; }
+.leave-card.visible{ animation:cardPop .55s cubic-bezier(.22,1,.36,1) forwards; }
+@keyframes cardPop{ from{opacity:0;transform:translateY(28px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
+.leave-card::before{ content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(217,164,65,.04) 0%,transparent 55%); pointer-events:none; border-radius:22px; z-index:0; }
+.card-banner{ height:7px; position:relative; z-index:1; }
+.card-banner.pending{ background:linear-gradient(90deg,#d9a441,#f0c060); }
+.card-banner.approved{ background:linear-gradient(90deg,#4ade80,#22c55e); }
+.card-banner.rejected{ background:linear-gradient(90deg,#ff6b6b,#ef4444); }
+.card-body{ padding:22px 22px 18px; position:relative; z-index:1; }
+.intern-profile-row{ display:flex; align-items:center; gap:14px; margin-bottom:18px; }
+.intern-pic-wrap{ position:relative; flex-shrink:0; }
+.intern-pic{ width:58px; height:58px; border-radius:18px; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:22px; color:#fff; border:2px solid rgba(255,255,255,.12); transition:transform .3s,box-shadow .3s; overflow:hidden; }
+.intern-pic img{ width:100%; height:100%; object-fit:cover; object-position:center top; display:block; border-radius:16px; }
+.leave-card:hover .intern-pic{ transform:scale(1.06); box-shadow:0 8px 24px rgba(0,0,0,.5); }
+.intern-pic-online{ position:absolute; bottom:-1px; right:-1px; width:14px; height:14px; border-radius:50%; border:2px solid #141810; background:var(--teal); }
+.intern-full-name{ font-family:'Syne',sans-serif; font-size:16px; font-weight:800; color:var(--text); line-height:1.1; margin-bottom:3px; }
+.intern-role-tag{ font-size:11px; color:var(--muted); }
+.status-badge{ flex-shrink:0; padding:4px 12px; border-radius:20px; font-family:'Syne',sans-serif; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+.sb-pending{ background:rgba(217,164,65,.12); border:1px solid rgba(217,164,65,.3); color:var(--accent); }
+.sb-approved{ background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.25); color:var(--green); }
+.sb-rejected{ background:rgba(255,107,107,.1); border:1px solid rgba(255,107,107,.25); color:var(--red); }
+.leave-meta-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+.leave-meta-cell{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); border-radius:11px; padding:10px 12px; }
+.lmc-label{ font-size:9px; font-family:'Syne',sans-serif; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+.lmc-value{ font-size:12px; font-weight:600; color:var(--text); }
+.reason-box{ background:rgba(217,164,65,.05); border:1px solid rgba(217,164,65,.14); border-radius:12px; padding:12px 14px; margin-bottom:16px; position:relative; overflow:hidden; }
+.reason-box::before{ content:'"'; position:absolute; top:-8px; left:10px; font-family:'Georgia',serif; font-size:60px; color:rgba(217,164,65,.1); line-height:1; pointer-events:none; }
+.reason-label{ font-size:9px; font-family:'Syne',sans-serif; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin-bottom:6px; }
+.reason-text{ font-size:12px; line-height:1.55; color:var(--text); font-style:italic; position:relative; z-index:1; }
+.card-actions{ display:flex; gap:10px; }
+.btn-action{ flex:1; padding:11px; border-radius:14px; font-family:'Syne',sans-serif; font-size:12px; font-weight:700; letter-spacing:.06em; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; transition:all .25s cubic-bezier(.22,1,.36,1); }
+.btn-accept{ background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.3); color:var(--green); }
+.btn-accept:hover{ background:rgba(74,222,128,.18); border-color:rgba(74,222,128,.5); box-shadow:0 0 24px rgba(74,222,128,.2); transform:translateY(-2px) scale(1.02); }
+.btn-reject-action{ background:rgba(255,107,107,.08); border:1px solid rgba(255,107,107,.25); color:var(--red); }
+.btn-reject-action:hover{ background:rgba(255,107,107,.16); border-color:rgba(255,107,107,.45); box-shadow:0 0 24px rgba(255,107,107,.2); transform:translateY(-2px) scale(1.02); }
+.btn-view{ flex:0; padding:11px 14px; border-radius:14px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); color:var(--muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+.btn-view:hover{ background:rgba(255,255,255,.08); color:var(--text); }
+.btn-view svg{ width:14px; height:14px; stroke:currentColor; }
+.decision-banner{ display:none; align-items:center; justify-content:center; gap:10px; padding:14px; border-radius:14px; font-family:'Syne',sans-serif; font-size:13px; font-weight:700; letter-spacing:.06em; }
+.decision-banner.approved-state{ background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.25); color:var(--green); }
+.decision-banner.rejected-state{ background:rgba(255,107,107,.08); border:1px solid rgba(255,107,107,.25); color:var(--red); }
+.pulse-ring{ position:absolute; top:16px; right:16px; width:10px; height:10px; z-index:2; }
+.pulse-ring::before,.pulse-ring::after{ content:''; position:absolute; inset:0; border-radius:50%; }
+.pulse-ring::before{ background:var(--accent); }
+.pulse-ring::after{ background:var(--accent); opacity:.6; animation:ringPulse 1.8s infinite ease-out; }
+@keyframes ringPulse{ 0%{transform:scale(1);opacity:.6} 100%{transform:scale(3);opacity:0} }
+.modal-overlay{ position:fixed; inset:0; z-index:5000; background:rgba(0,0,0,.78); backdrop-filter:blur(18px); display:none; align-items:center; justify-content:center; padding:20px; }
+.modal-overlay.open{ display:flex; }
+.modal-box{ background:#111408; border:1px solid rgba(217,164,65,.25); border-radius:26px; width:520px; max-width:100%; max-height:90vh; overflow-y:auto; box-shadow:0 40px 100px rgba(0,0,0,.9); animation:modalSlide .35s cubic-bezier(.22,1,.36,1); }
+@keyframes modalSlide{ from{opacity:0;transform:translateY(20px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
+.modal-banner{ height:120px; position:relative; overflow:hidden; border-radius:26px 26px 0 0; }
+.modal-banner-bg{ position:absolute; inset:0; background:linear-gradient(135deg,rgba(217,164,65,.2),rgba(217,164,65,.05)); }
+.modal-banner-pattern{ position:absolute; inset:0; background-image:repeating-linear-gradient(45deg,rgba(217,164,65,.03) 0px,rgba(217,164,65,.03) 1px,transparent 1px,transparent 16px); }
+.modal-pic-wrap{ position:absolute; bottom:-30px; left:28px; }
+.modal-pic{ width:72px; height:72px; border-radius:22px; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:28px; color:#fff; border:3px solid #111408; box-shadow:0 8px 28px rgba(0,0,0,.6); overflow:hidden; }
+.modal-pic img{ width:100%; height:100%; object-fit:cover; display:block; border-radius:19px; }
+.modal-close-btn{ position:absolute; top:14px; right:14px; width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.15); color:var(--muted); cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+.modal-close-btn:hover{ background:rgba(255,107,107,.2); color:var(--red); }
+.modal-content{ padding:48px 28px 28px; }
+.modal-name{ font-family:'Syne',sans-serif; font-size:22px; font-weight:800; margin-bottom:3px; }
+.modal-role{ font-size:12px; color:var(--muted); margin-bottom:20px; }
+.modal-section-title{ font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.modal-section-title::after{ content:''; flex:1; height:1px; background:rgba(217,164,65,.15); }
+.modal-info-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+.mic{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-radius:12px; padding:12px 14px; }
+.mic-lbl{ font-size:9px; font-family:'Syne',sans-serif; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+.mic-val{ font-size:13px; font-weight:600; color:var(--text); }
+.modal-reason-box{ background:rgba(217,164,65,.06); border:1px solid rgba(217,164,65,.18); border-radius:14px; padding:16px; margin-bottom:20px; }
+.modal-reason-text{ font-size:14px; line-height:1.65; color:var(--text); font-style:italic; }
+.modal-actions{ display:flex; gap:12px; }
+.modal-btn{ flex:1; padding:13px; border-radius:16px; font-family:'Syne',sans-serif; font-size:12px; font-weight:700; letter-spacing:.06em; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:all .25s; }
+.modal-btn svg{ width:15px; height:15px; stroke:currentColor; }
+.mbtn-accept{ background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.3); color:var(--green); }
+.mbtn-accept:hover{ background:rgba(74,222,128,.2); box-shadow:0 0 28px rgba(74,222,128,.2); transform:translateY(-2px); }
+.mbtn-reject{ background:rgba(255,107,107,.08); border:1px solid rgba(255,107,107,.25); color:var(--red); }
+.mbtn-reject:hover{ background:rgba(255,107,107,.16); box-shadow:0 0 28px rgba(255,107,107,.2); transform:translateY(-2px); }
+.toast{ position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); background:rgba(14,18,8,.97); border:1px solid rgba(217,164,65,.4); color:#fff; padding:12px 24px; border-radius:30px; font-size:13px; opacity:0; pointer-events:none; transition:opacity .3s,transform .3s; z-index:9999; white-space:nowrap; display:flex; align-items:center; gap:10px; }
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.toast-icon{ width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; flex-shrink:0; }
+.ti-green{ background:rgba(74,222,128,.2); color:var(--green); }
+.ti-red{ background:rgba(255,107,107,.2); color:var(--red); }
+.empty-state{ display:none; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; text-align:center; }
+.empty-state svg{ width:48px; height:48px; stroke:rgba(240,237,228,.12); margin-bottom:14px; }
+.empty-state h3{ font-family:'Syne',sans-serif; font-size:16px; font-weight:700; color:var(--muted); margin-bottom:6px; }
+.empty-state p{ font-size:12px; color:rgba(240,237,228,.25); }
+.loading-state{ display:flex; align-items:center; justify-content:center; padding:60px; color:var(--muted); font-family:'Syne',sans-serif; font-size:13px; gap:12px; }
+.spinner{ width:20px; height:20px; border:2px solid rgba(217,164,65,.2); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+@keyframes fadeUp{ from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+.section-title{ font-family:'Syne',sans-serif; font-size:12px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:16px; display:flex; align-items:center; gap:10px; opacity:0; animation:fadeUp .6s .35s cubic-bezier(.22,1,.36,1) forwards; }
+.section-title::after{ content:''; flex:1; height:1px; background:rgba(217,164,65,.18); }
+</style>
+</head>
+<body>
+  <script src="mentor-nav.js"></script>
+<canvas id="meshCanvas"></canvas>
+<div class="glow" id="glow"></div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Overview</div>
+    <a class="nav-item" href="mentor-dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
+    <a class="nav-item" href="mentor-profile.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>My Profile</a>
+    <a class="nav-item" href="mentor-interns.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>My Interns</a>
+    <a class="nav-item" href="mentor-attendance.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 16 11 18 15 14"/></svg>Attendance</a>
+    <div class="sidebar-section">Tasks</div>
+    <a class="nav-item" href="mentor-assign.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Assign Tasks</a>
+    <a class="nav-item" href="mentor-submissions.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Submissions</a>
+    <a class="nav-item" href="mentor-feedback.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Give Feedback</a>
+    <div class="sidebar-section">Manage</div>
+    <a class="nav-item active" href="mentor-leave.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      Leave Requests
+      <span class="nav-badge" id="sidebarBadge" style="display:none">0</span>
+    </a>
+    <a class="nav-item" href="mentor-content.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>Manage Content</a>
+    <a class="nav-item" href="mentor-certificate.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>Certificates</a>
+    <div class="sidebar-section">Communication</div>
+    <a class="nav-item" href="mentor-pvtchat.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Chat with Interns</a>
+  </aside>
+
+  <main>
+    <div class="page-header">
+      <div>
+        <div class="page-eyebrow">Leave Management</div>
+        <h1 class="page-title">Leave <span>Requests</span></h1>
+        <p class="page-sub">Review and action intern leave applications below.</p>
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-pill">
+        <div class="stat-pill-icon spi-orange">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div><div class="stat-pill-num" id="pendingStat" style="color:var(--accent)">—</div><div class="stat-pill-lbl">Pending</div></div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-pill-icon spi-green">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div><div class="stat-pill-num" id="approvedStat" style="color:var(--green)">—</div><div class="stat-pill-lbl">Approved</div></div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-pill-icon spi-red">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+        <div><div class="stat-pill-num" id="rejectedStat" style="color:var(--red)">—</div><div class="stat-pill-lbl">Rejected</div></div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-pill-icon spi-teal">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div><div class="stat-pill-num" id="totalStat" style="color:var(--teal)">—</div><div class="stat-pill-lbl">Total</div></div>
+      </div>
+    </div>
+
+    <div class="filter-row">
+      <button class="filter-tab active" onclick="filterLeaves('all',this)">All <span class="filter-count" id="fcAll">0</span></button>
+      <button class="filter-tab" onclick="filterLeaves('pending',this)">Pending <span class="filter-count" id="fcPending">0</span></button>
+      <button class="filter-tab" onclick="filterLeaves('approved',this)">Approved <span class="filter-count" id="fcApproved">0</span></button>
+      <button class="filter-tab" onclick="filterLeaves('rejected',this)">Rejected <span class="filter-count" id="fcRejected">0</span></button>
+    </div>
+
+    <div class="section-title">Awaiting Your Action</div>
+    <div id="leaveGrid" class="leave-grid">
+      <div class="loading-state" style="grid-column:1/-1">
+        <div class="spinner"></div> Loading leave requests…
+      </div>
+    </div>
+    <div class="empty-state" id="emptyState">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      <h3>No leave requests here</h3>
+      <p>Try switching to a different filter tab.</p>
+    </div>
+  </main>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal-box">
+    <div class="modal-banner">
+      <div class="modal-banner-bg"></div>
+      <div class="modal-banner-pattern"></div>
+      <div class="modal-pic-wrap"><div class="modal-pic" id="mpic"></div></div>
+      <button class="modal-close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-content">
+      <div id="mname" class="modal-name"></div>
+      <div id="mrole" class="modal-role"></div>
+      <div class="modal-section-title">Leave Details</div>
+      <div class="modal-info-grid">
+        <div class="mic"><div class="mic-lbl">Type</div><div class="mic-val" id="mtype"></div></div>
+        <div class="mic"><div class="mic-lbl">Status</div><div class="mic-val" id="mstatus"></div></div>
+        <div class="mic"><div class="mic-lbl">From</div><div class="mic-val" id="mfrom"></div></div>
+        <div class="mic"><div class="mic-lbl">To</div><div class="mic-val" id="mto"></div></div>
+        <div class="mic"><div class="mic-lbl">Duration</div><div class="mic-val" id="mduration"></div></div>
+        <div class="mic"><div class="mic-lbl">Applied On</div><div class="mic-val" id="mapplied"></div></div>
+      </div>
+      <div class="modal-section-title">Reason Provided</div>
+      <div class="modal-reason-box"><div class="modal-reason-text" id="mreason"></div></div>
+      <div class="modal-actions" id="mactions"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <div class="toast-icon" id="toastIcon"></div>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+const API = 'http://localhost:3000/api';
+
+// ── Photo map — add more interns here as needed ───────────
+const photoMap = {
+  'Monisha K':    '../images/monisha.jpeg',
+  'Fiona Shalet': '../images/fiona.jpeg',
+  'Stella Mary':  '../images/stella.jpeg',
+  'Shonn Dias':   '../images/shonn.jpeg',
+  'Bhoomika Ravi':'../images/bhoomika.jpeg',
+  'Deekshitha S': '../images/deekshitha.jpeg'
+};
+
+const gradients = [
+  'linear-gradient(135deg,#0d9488,#2dd4bf)',
+  'linear-gradient(135deg,#991b1b,#ff6b6b)',
+  'linear-gradient(135deg,#0369a1,#38bdf8)',
+  'linear-gradient(135deg,#9d174d,#fb7185)',
+  'linear-gradient(135deg,#7c3aed,#a78bfa)',
+  'linear-gradient(135deg,#b45309,#f59e0b)',
+];
+
+function getGradient(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h += name.charCodeAt(i);
+  return gradients[h % gradients.length];
+}
+
+function initials(name) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+}
+
+function picHTML(name, size='card') {
+  const url = photoMap[name];
+  const r   = size === 'modal' ? '19px' : '16px';
+  if (url) return `<img src="${url}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:${r};display:block;">`;
+  return initials(name);
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-US', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function daysBetween(from, to) {
+  if (!from || !to) return '1 Day';
+  const d = Math.round((new Date(to) - new Date(from)) / (1000*60*60*24)) + 1;
+  return d <= 1 ? '1 Day' : `${d} Days`;
+}
+
+// ── State ─────────────────────────────────────────────────
+let allLeaves    = [];
+let currentFilter = 'all';
+
+// ── Load all leaves ───────────────────────────────────────
+async function loadLeaves() {
+  try {
+    const res = await fetch(`${API}/leave/all`);
+    if (!res.ok) throw new Error('Server error');
+    allLeaves = await res.json();
+    renderCards(allLeaves);
+    updateStats();
+  } catch(e) {
+    document.getElementById('leaveGrid').innerHTML =
+      `<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:60px;font-size:13px;">
+        Failed to load requests. Is the server running?
+      </div>`;
+  }
+}
+
+// ── Render cards ──────────────────────────────────────────
+function renderCards(leaves) {
+  const grid     = document.getElementById('leaveGrid');
+  const filtered = currentFilter === 'all'
+    ? leaves
+    : leaves.filter(l => l.status === currentFilter);
+
+  if (!filtered.length) {
+    grid.innerHTML = '';
+    document.getElementById('emptyState').style.display = 'flex';
+    return;
+  }
+  document.getElementById('emptyState').style.display = 'none';
+
+  grid.innerHTML = filtered.map((l, i) => {
+    const raw  = l.intern_name || 'Intern';
+const name = raw === 'Monisha K Murthy' ? 'Monisha K' : raw;
+    const status    = l.status      || 'pending';
+    const isPending = status === 'pending';
+    const bg        = getGradient(name);
+    const fromD     = l.from_date   || l.leave_date;
+    const toD       = l.to_date     || l.leave_date;
+    const dur       = daysBetween(fromD, toD);
+
+    return `
+    <div class="leave-card" data-id="${l.id}" data-status="${status}" style="animation-delay:${i*80}ms">
+      ${isPending ? '<div class="pulse-ring"></div>' : ''}
+      <div class="card-banner ${status}" id="banner-${l.id}"></div>
+      <div class="card-body">
+        <div class="intern-profile-row">
+          <div class="intern-pic-wrap">
+            <div class="intern-pic" style="background:${bg}">${picHTML(name)}</div>
+            <div class="intern-pic-online"></div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="intern-full-name">${name}</div>
+            <div class="intern-role-tag">Intern · InternSync</div>
+          </div>
+          <div class="status-badge sb-${status}" id="sb-${l.id}">
+            ${status.charAt(0).toUpperCase() + status.slice(1)}
+          </div>
+        </div>
+
+        <div class="leave-meta-grid">
+          <div class="leave-meta-cell"><div class="lmc-label">Leave Type</div><div class="lmc-value">${l.leave_type || 'Other'}</div></div>
+          <div class="leave-meta-cell"><div class="lmc-label">Duration</div><div class="lmc-value">${dur}</div></div>
+          <div class="leave-meta-cell"><div class="lmc-label">From</div><div class="lmc-value">${fmtDate(fromD)}</div></div>
+          <div class="leave-meta-cell"><div class="lmc-label">To</div><div class="lmc-value">${fmtDate(toD)}</div></div>
+        </div>
+
+        <div class="reason-box">
+          <div class="reason-label">Reason</div>
+          <div class="reason-text">"${l.reason || '—'}"</div>
+        </div>
+
+        <div class="card-actions" id="actions-${l.id}" ${!isPending ? 'style="display:none"' : ''}>
+          <button class="btn-action btn-accept" onclick="handleDecision(${l.id},'approved','${name.replace(/'/g,"\\'")}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>Approve
+          </button>
+          <button class="btn-action btn-reject-action" onclick="handleDecision(${l.id},'rejected','${name.replace(/'/g,"\\'")}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Reject
+          </button>
+          <button class="btn-view" onclick="openModal(${l.id})" title="View Details">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+        </div>
+
+        <div class="decision-banner ${status !== 'pending' ? (status+'-state') : ''}"
+             id="dbanner-${l.id}"
+             style="display:${!isPending ? 'flex' : 'none'}">
+          ${!isPending ? `
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" width="18" height="18">
+              <circle cx="12" cy="12" r="10"/>
+              ${status === 'approved'
+                ? '<polyline points="9 11 12 14 16 8"/>'
+                : '<line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>'}
+            </svg>
+            Leave ${status.charAt(0).toUpperCase() + status.slice(1)}` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Animate cards in + attach tilt
+  document.querySelectorAll('.leave-card').forEach((card, i) => {
+    setTimeout(() => card.classList.add('visible'), 80 + i*80);
+    attachTilt(card);
+  });
+}
+
+// ── Handle approve / reject ───────────────────────────────
+async function handleDecision(id, status, name) {
+  const card = document.querySelector(`[data-id="${id}"]`);
+  if (!card || card.dataset.status !== 'pending') return;
+
+  try {
+    const res = await fetch(`${API}/leave/status/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) throw new Error('Failed');
+  } catch(e) {
+    showToast('Network error — could not save decision', 'red');
+    return;
+  }
+
+  // Update local state
+  const leave = allLeaves.find(l => l.id === id);
+  if (leave) leave.status = status;
+
+  // Update card UI without re-render
+  card.dataset.status = status;
+
+  document.getElementById(`banner-${id}`).className = `card-banner ${status}`;
+
+  const sb = document.getElementById(`sb-${id}`);
+  sb.className  = `status-badge sb-${status}`;
+  sb.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+
+  const pr = card.querySelector('.pulse-ring');
+  if (pr) pr.style.display = 'none';
+
+  document.getElementById(`actions-${id}`).style.display = 'none';
+
+  const db = document.getElementById(`dbanner-${id}`);
+  db.className    = `decision-banner ${status}-state`;
+  db.style.display = 'flex';
+  db.innerHTML    = `
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" width="18" height="18">
+      <circle cx="12" cy="12" r="10"/>
+      ${status === 'approved'
+        ? '<polyline points="9 11 12 14 16 8"/>'
+        : '<line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>'}
+    </svg>
+    Leave ${status.charAt(0).toUpperCase() + status.slice(1)}`;
+
+  updateStats();
+  showToast(
+    status === 'approved' ? `✓ Leave approved for ${name}` : `✕ Leave rejected for ${name}`,
+    status === 'approved' ? 'green' : 'red'
+  );
+  closeModal();
+}
+
+// ── Stats ─────────────────────────────────────────────────
+function updateStats() {
+  const p = allLeaves.filter(l => l.status === 'pending').length;
+  const a = allLeaves.filter(l => l.status === 'approved').length;
+  const r = allLeaves.filter(l => l.status === 'rejected').length;
+  const t = allLeaves.length;
+
+  document.getElementById('pendingStat').textContent  = p;
+  document.getElementById('approvedStat').textContent = a;
+  document.getElementById('rejectedStat').textContent = r;
+  document.getElementById('totalStat').textContent    = t;
+
+  const badge = document.getElementById('sidebarBadge');
+  badge.textContent    = p;
+  badge.style.display  = p > 0 ? '' : 'none';
+
+  document.getElementById('fcAll').textContent      = t;
+  document.getElementById('fcPending').textContent  = p;
+  document.getElementById('fcApproved').textContent = a;
+  document.getElementById('fcRejected').textContent = r;
+}
+
+// ── Filter ────────────────────────────────────────────────
+function filterLeaves(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderCards(allLeaves);
+}
+
+// ── Modal ─────────────────────────────────────────────────
+function openModal(id) {
+  const l = allLeaves.find(x => x.id === id);
+  if (!l) return;
+
+  const name   = l.intern_name || 'Intern';
+  const status = l.status      || 'pending';
+  const fromD  = l.from_date   || l.leave_date;
+  const toD    = l.to_date     || l.leave_date;
+
+  const mpic = document.getElementById('mpic');
+  mpic.style.background = getGradient(name);
+  mpic.innerHTML        = picHTML(name, 'modal');
+
+  document.getElementById('mname').textContent    = name;
+  document.getElementById('mrole').textContent    = 'Intern · InternSync';
+  document.getElementById('mtype').textContent    = l.leave_type || 'Other';
+  document.getElementById('mstatus').textContent  = status.charAt(0).toUpperCase() + status.slice(1);
+  document.getElementById('mfrom').textContent    = fmtDate(fromD);
+  document.getElementById('mto').textContent      = fmtDate(toD);
+  document.getElementById('mduration').textContent = daysBetween(fromD, toD);
+  document.getElementById('mapplied').textContent = fmtDate(l.created_at);
+  document.getElementById('mreason').textContent  = l.reason || '—';
+
+  const mactions = document.getElementById('mactions');
+  if (status === 'pending') {
+    mactions.innerHTML = `
+      <button class="modal-btn mbtn-accept" onclick="handleDecision(${l.id},'approved','${name.replace(/'/g,"\\'")}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" width="15" height="15"><polyline points="20 6 9 17 4 12"/></svg>Approve Leave
+      </button>
+      <button class="modal-btn mbtn-reject" onclick="handleDecision(${l.id},'rejected','${name.replace(/'/g,"\\'")}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" width="15" height="15"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Reject Leave
+      </button>`;
+  } else {
+    mactions.innerHTML = `
+      <div style="width:100%;padding:14px;border-radius:16px;text-align:center;
+                  font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
+                  background:${status==='approved'?'rgba(74,222,128,.1)':'rgba(255,107,107,.08)'};
+                  border:1px solid ${status==='approved'?'rgba(74,222,128,.25)':'rgba(255,107,107,.25)'};
+                  color:${status==='approved'?'var(--green)':'var(--red)'};">
+        ${status==='approved' ? '✓ Already Approved' : '✕ Already Rejected'}
+      </div>`;
+  }
+
+  document.getElementById('detailModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('detailModal').classList.remove('open');
+}
+
+document.getElementById('detailModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ── Toast ─────────────────────────────────────────────────
+function showToast(msg, type='green') {
+  const t    = document.getElementById('toast');
+  const icon = document.getElementById('toastIcon');
+  icon.className  = `toast-icon ti-${type}`;
+  icon.textContent = type === 'green' ? '✓' : '✕';
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ── Tilt effect ───────────────────────────────────────────
+function attachTilt(card) {
+  card.addEventListener('mousemove', e => {
+    const r  = card.getBoundingClientRect();
+    const dx = (e.clientX - r.left - r.width/2)  / (r.width/2);
+    const dy = (e.clientY - r.top  - r.height/2) / (r.height/2);
+    card.style.transform  = `perspective(1000px) rotateY(${dx*7}deg) rotateX(${-dy*7}deg) translateY(-6px) scale(1.015)`;
+    card.style.boxShadow  = `${-dx*16}px ${-dy*16}px 50px rgba(217,164,65,.16),0 24px 64px rgba(0,0,0,.55)`;
+  });
+  card.addEventListener('mouseleave', () => {
+    card.style.transition = 'transform .5s cubic-bezier(.34,1.56,.64,1),box-shadow .4s';
+    card.style.transform  = 'perspective(1000px) rotateY(0) rotateX(0) translateY(0) scale(1)';
+    card.style.boxShadow  = '0 8px 40px rgba(0,0,0,.4)';
+    setTimeout(() => card.style.transition = '', 500);
+  });
+  card.addEventListener('mouseenter', () =>
+    card.style.transition = 'transform .12s ease,box-shadow .12s ease'
+  );
+}
+
+// ── Mesh background ───────────────────────────────────────
+const cvs = document.getElementById('meshCanvas'), ctx = cvs.getContext('2d');
+let W, H;
+function rsz() { W = cvs.width = innerWidth; H = cvs.height = innerHeight; }
+rsz(); addEventListener('resize', rsz);
+const pts = [
+  {ax:.65,ay:.25,rx:.3,ry:.2,fx:.00028,fy:.00016,px:0,py:1,r:620,c:'rgba(180,120,20,'},
+  {ax:.2,ay:.65,rx:.22,ry:.28,fx:.00018,fy:.00026,px:2.4,py:0,r:540,c:'rgba(155,100,15,'},
+  {ax:.5,ay:.1,rx:.28,ry:.2,fx:.00022,fy:.00014,px:1,py:2,r:580,c:'rgba(50,65,20,'},
+  {ax:.88,ay:.78,rx:.2,ry:.22,fx:.00013,fy:.00031,px:.5,py:.8,r:500,c:'rgba(44,58,18,'},
+  {ax:.08,ay:.18,rx:.18,ry:.22,fx:.00025,fy:.0002,px:3,py:1.5,r:460,c:'rgba(20,24,12,'}
+];
+function mesh(t) {
+  ctx.fillStyle = '#0f1209'; ctx.fillRect(0,0,W,H);
+  pts.forEach(p => {
+    const x = W*(p.ax + p.rx*Math.sin(p.fx*t+p.px));
+    const y = H*(p.ay + p.ry*Math.cos(p.fy*t+p.py));
+    const g = ctx.createRadialGradient(x,y,0,x,y,p.r);
+    g.addColorStop(0,p.c+'0.28)'); g.addColorStop(.5,p.c+'0.07)'); g.addColorStop(1,p.c+'0)');
+    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  });
+  const v = ctx.createRadialGradient(W/2,H/2,H*.1,W/2,H/2,H*.9);
+  v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.55)');
+  ctx.fillStyle = v; ctx.fillRect(0,0,W,H);
+}
+let t0 = null;
+(function loop(ts) { if(!t0) t0=ts; mesh(ts-t0); requestAnimationFrame(loop); })(0);
+
+const gl = document.getElementById('glow');
+addEventListener('mousemove', e => { gl.style.left = e.clientX+'px'; gl.style.top = e.clientY+'px'; });
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('mousemove', e => {
+    const r = item.getBoundingClientRect();
+    if (!item.classList.contains('active'))
+      item.style.transform = `translateY(${(e.clientY-r.top-r.height/2)*.1}px)`;
+  });
+  item.addEventListener('mouseleave', () => {
+    item.style.transition = 'transform .4s cubic-bezier(.34,1.56,.64,1)';
+    item.style.transform  = 'translateY(0)';
+    setTimeout(() => item.style.transition = '', 400);
+  });
+});
+
+// ── Boot ──────────────────────────────────────────────────
+loadLeaves();
+</script>
+</body>
+</html>
