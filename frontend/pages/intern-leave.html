@@ -237,7 +237,9 @@ tbody tr:hover{ background:rgba(255,255,255,.03); }
 </div>
 
 <script>
-const API = 'http://localhost:3000/api';
+const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+  ? 'http://localhost:3000'
+  : 'https://internsync-production-7079.up.railway.app';
 
 // ── Auth helpers ──────────────────────────────────────────
 function getInternId() {

@@ -372,8 +372,11 @@ main{ flex:1; padding:32px 36px; overflow-y:auto; }
 
 <script>
 // ── CONFIG ───────────────────────────────────────────────────
-const API_BASE   = window.location.port === '3000' ? '' : 'http://localhost:3000';
-const INTERN_ID  = 19;   // Monisha K's user ID — matches INTERN_ID_MAP in mentor-feedback.html
+const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+  ? 'http://localhost:3000'
+  : 'https://internsync-production-7079.up.railway.app';
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+const INTERN_ID = user.id;
 
 // ── MESH BACKGROUND ──────────────────────────────────────────
 const cvs = document.getElementById('meshCanvas'), ctx = cvs.getContext('2d');
