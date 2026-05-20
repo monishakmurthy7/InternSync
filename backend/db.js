@@ -8,11 +8,15 @@ const pool = mysql.createPool({
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || 'MyNewPassword123!',
   database: process.env.DB_NAME || 'internsync',
+  port: process.env.DB_PORT || 3306,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
   enableKeepAlive: true,
-  keepAliveInitialDelay: 0
+  keepAliveInitialDelay: 0,
+  ssl: {
+    rejectUnauthorized: false   // ← this fixes the SSL handshake error
+  }
 });
 
 // Test connection
@@ -25,7 +29,6 @@ pool.getConnection((err, connection) => {
   connection.release();
 });
 
-// Promisify query method for async/await support
 const util = require('util');
 pool.queryAsync = util.promisify(pool.query).bind(pool);
 

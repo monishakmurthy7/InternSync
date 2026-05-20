@@ -90,7 +90,8 @@ app.use(cors({
     'http://localhost:3000',
     'http://127.0.0.1:5500',
     'http://localhost:5500',
-    'https://your-netlify-site.netlify.app'
+    'https://internsyncc.netlify.app',
+    'https://internsync-production-7079.up.railway.app'  // ← ADD THIS
   ],
   credentials: true
 }));
