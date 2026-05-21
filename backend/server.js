@@ -18,7 +18,7 @@ const app = express();
 const FRONTEND_DIR = path.resolve(__dirname, '../frontend');
 
 // ─────────────────────────────────────────
-// MULTER CONFIG #1: Certificates (existing - unchanged)
+// MULTER CONFIG #1: Certificates
 // ─────────────────────────────────────────
 const certStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -34,7 +34,7 @@ const certStorage = multer.diskStorage({
 
 const uploadCertificates = multer({
   storage: certStorage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB for certificates
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = /pdf|png|jpg|jpeg|webp/i;
     if (allowed.test(path.extname(file.originalname))) {
@@ -78,7 +78,6 @@ const uploadSubmissions = multer({
   }
 });
 
-// Make uploads accessible to routes that need them
 app.locals.uploadCertificates = uploadCertificates;
 app.locals.uploadSubmissions   = uploadSubmissions;
 
@@ -91,7 +90,7 @@ app.use(cors({
     'http://127.0.0.1:5500',
     'http://localhost:5500',
     'https://internsyncc.netlify.app',
-    'https://internsync-production-7079.up.railway.app'  // ← ADD THIS
+    'https://internsync-3v10.onrender.com'
   ],
   credentials: true
 }));
@@ -114,6 +113,9 @@ app.use(passport.initialize());
 // GOOGLE STRATEGY
 // ─────────────────────────────────────────
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+
+// DEBUG: log which Client ID is being used
+console.log('✅ GOOGLE_CLIENT_ID loaded:', process.env.GOOGLE_CLIENT_ID);
 
 passport.use(new GoogleStrategy(
   {
@@ -182,7 +184,8 @@ app.get('/api/auth/google/callback',
         { expiresIn: '7d' }
       );
       const params = new URLSearchParams({ token, id: user.id, name: user.name, role: user.role });
-      res.redirect(`/pages/auth.html?${params.toString()}`);
+      const frontendURL = process.env.FRONTEND_URL || 'https://internsyncc.netlify.app';
+      res.redirect(`${frontendURL}/pages/auth.html?${params.toString()}`);
     } catch (err) {
       res.redirect('/pages/auth.html?error=server_error');
     }
@@ -190,19 +193,10 @@ app.get('/api/auth/google/callback',
 );
 
 // ─────────────────────────────────────────
-// UPLOADS STATIC MIDDLEWARE (SINGLE — FIXED)
-// Place this BEFORE API routes so files are
-// accessible at /uploads/submissions/filename
+// UPLOADS STATIC MIDDLEWARE
 // ─────────────────────────────────────────
 app.use('/uploads', (req, res, next) => {
-  // Prevent MIME sniffing attacks
   res.setHeader('X-Content-Type-Options', 'nosniff');
-
-  // ✅ REMOVED: Content-Security-Policy "default-src 'none'"
-  // That header was blocking browsers from rendering PDF/DOC files inline.
-  // X-Content-Type-Options alone is sufficient protection here.
-
-  // Block dangerous executable file types from being served
   if (/\.(php|js|exe|sh|bat|phtml|pl|py|rb)$/i.test(req.path)) {
     return res.status(403).send('File type not allowed for direct access');
   }
