@@ -410,12 +410,12 @@ async function loadFeedback() {
       bg:     (INTERN_META[f.intern_name] || {}).bg    || 'rgba(217,164,65',
       role:   (INTERN_META[f.intern_name] || {}).role  || 'Intern',
       date:   formatDate(f.created_at),
-      metrics: {
-        efficiency:    f.efficiency,
-        punctuality:   f.punctuality,
-        codeQuality:   f.codeQuality || f.code_quality,
-        communication: f.communication,
-      },
+     metrics: {
+  efficiency:    f.efficiency    || 0,
+  punctuality:   f.punctuality   || 0,
+  codeQuality:   f.codeQuality   || f.code_quality || 0,
+  communication: f.communication || 0,
+},
     }));
 
     // Build derived maps
@@ -733,7 +733,7 @@ function renderHistory() {
           <div class="fhi-stars">${'⭐'.repeat(f.rating)}${'☆'.repeat(5-f.rating)}</div>
           <div class="fhi-date">${f.date}</div>
         </div>
-        <div class="fhi-text">"${f.message || f.text}"</div>
+        <div class="fhi-text">"${f.message || f.comment || f.text || ''}"</div>
         ${tagHTML ? `<div class="fhi-tags">${tagHTML}</div>` : ''}
         <div class="fhi-metrics">
           <div class="fhi-metric"><div class="fhi-metric-val">${m.efficiency||0}%</div><div class="fhi-metric-lbl">Efficiency</div></div>
