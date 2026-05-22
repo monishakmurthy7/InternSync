@@ -367,7 +367,7 @@ function startPolling() {
   pollTimer = setInterval(async () => {
     try {
       const since = lastTimestamp || new Date(0).toISOString();
-      const res   = await fetch(`${API}/discussion/poll?since=${encodeURIComponent(since)}`);
+      const res   = await fetch(`${API_BASE}/discussion/poll?since=${encodeURIComponent(since)}`);
       const data  = await res.json();
       if (!data.success) return;
       let hasNew = false;
@@ -393,7 +393,7 @@ async function sendMessage() {
   document.getElementById('sendBtn').disabled = true;
 
   try {
-    const res = await fetch(`${API}/discussion`, {
+    const res = await fetch(`${API_BASE}/discussion`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

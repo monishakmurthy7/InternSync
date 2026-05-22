@@ -346,7 +346,7 @@ async function fetchLiveSubmissions() {
   indicator.textContent = 'Fetching…';
 
   try {
-    const res = await fetch(`${API}/submissions/all`);
+    const res = await fetch(`${API_BASE}/submissions/all`);
     if (!res.ok) throw new Error(`Server ${res.status}`);
     const rows = await res.json();
 
@@ -566,7 +566,7 @@ function setStatus(id, status){
   // For real DB entries, persist status via feedback endpoint
   if (s.source === 'live' && s.dbId) {
     const dbStatus = status === 'approved' ? 'on_time' : (status === 'rejected' ? 'late' : 'on_time');
-    fetch(`${API}/submissions/feedback/${s.dbId}`, {
+    fetch(`${API_BASE}/submissions/feedback/${s.dbId}`, {
       method: 'PUT',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ feedback: s.feedback || '(Status updated by mentor)', status: dbStatus })
@@ -601,7 +601,7 @@ async function submitFeedback(){
   if (s.source === 'live' && s.dbId) {
     try {
       const dbStatus = s.status === 'approved' ? 'on_time' : (s.status === 'rejected' ? 'late' : 'on_time');
-      await fetch(`${API}/submissions/feedback/${s.dbId}`, {
+      await fetch(`${API_BASE}/submissions/feedback/${s.dbId}`, {
         method: 'PUT',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ feedback: text || '(No text)', status: dbStatus })

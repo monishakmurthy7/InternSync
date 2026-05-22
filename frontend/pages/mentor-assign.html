@@ -392,7 +392,7 @@ function toggleIntern(name) {
 // ─────────────────────────────────────────────────────────────
 async function loadTasks() {
   try {
-    const res = await fetch(`${API}/tasks`);
+    const res = await fetch(`${API_BASE}/tasks`);
     if (!res.ok) throw new Error(`Server returned ${res.status}`);
     const data = await res.json();
     renderHistory(data.success ? data.tasks : []);
@@ -408,7 +408,7 @@ async function loadTasks() {
 // ─────────────────────────────────────────────────────────────
 async function loadStats() {
   try {
-    const res  = await fetch(`${API}/tasks/stats`);
+    const res  = await fetch(`${API_BASE}/tasks/stats`);
     if (!res.ok) throw new Error(`Server returned ${res.status}`);
     const data = await res.json();
     if (data.success) {
@@ -446,7 +446,7 @@ async function assignTask() {
   console.log('📤 Sending payload:', payload); // Debug — check browser console
 
   try {
-    const res = await fetch(`${API}/tasks`, {
+    const res = await fetch(`${API_BASE}/tasks`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(payload)
@@ -491,7 +491,7 @@ async function assignTask() {
 // ─────────────────────────────────────────────────────────────
 async function markDone(id) {
   try {
-    const res  = await fetch(`${API}/tasks/${id}/complete`, { method: 'PATCH' });
+    const res  = await fetch(`${API_BASE}/tasks/${id}/complete`, { method: 'PATCH' });
     const data = await res.json();
     if (!data.success) throw new Error(data.message);
     showToast('✓ Task marked as completed!');
@@ -507,7 +507,7 @@ async function markDone(id) {
 // ─────────────────────────────────────────────────────────────
 async function deleteTask(id) {
   try {
-    const res  = await fetch(`${API}/tasks/${id}`, { method: 'DELETE' });
+    const res  = await fetch(`${API_BASE}/tasks/${id}`, { method: 'DELETE' });
     const data = await res.json();
     if (!data.success) throw new Error(data.message);
     showToast('🗑 Task removed');

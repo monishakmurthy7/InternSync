@@ -701,7 +701,7 @@ async function doLogin() {
   btn.classList.add('btn-loading');
 
   try {
-    const res  = await fetch(`${API}/auth/login`, {
+    const res  = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password: pw })
@@ -751,7 +751,7 @@ async function doSignup() {
   btn.classList.add('btn-loading');
 
   try {
-    const res  = await fetch(`${API}/auth/register`, {
+    const res  = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password: pw, role })
@@ -790,7 +790,7 @@ async function doForgot() {
   btn.classList.add('btn-loading');
 
   try {
-    const res  = await fetch(`${API}/auth/forgot-password`, {
+    const res  = await fetch(`${API_BASE}/auth/forgot-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })
@@ -832,7 +832,7 @@ async function doResend() {
   }
 
   try {
-    const res = await fetch(`${API}/auth/forgot-password`, {
+    const res = await fetch(`${API_BASE}/auth/forgot-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: otpEmail })
@@ -865,7 +865,7 @@ async function doVerifyOtp() {
   btn.classList.add('btn-loading');
 
   try {
-    const res  = await fetch(`${API}/auth/verify-otp`, {
+    const res  = await fetch(`${API_BASE}/auth/verify-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: otpEmail, otp })
@@ -919,7 +919,7 @@ async function doResetPassword() {
   btn.classList.add('btn-loading');
 
   try {
-    const res  = await fetch(`${API}/auth/reset-password`, {
+    const res  = await fetch(`${API_BASE}/auth/reset-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: otpEmail, newPassword: pw })

@@ -336,7 +336,7 @@ let currentFilter = 'all';
 // ── Load all leaves ───────────────────────────────────────
 async function loadLeaves() {
   try {
-    const res = await fetch(`${API}/leave/all`);
+    const res = await fetch(`${API_BASE}/leave/all`);
     if (!res.ok) throw new Error('Server error');
     allLeaves = await res.json();
     renderCards(allLeaves);
@@ -445,7 +445,7 @@ async function handleDecision(id, status, name) {
   if (!card || card.dataset.status !== 'pending') return;
 
   try {
-    const res = await fetch(`${API}/leave/status/${id}`, {
+    const res = await fetch(`${API_BASE}/leave/status/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status })
