@@ -310,11 +310,10 @@ main{ flex:1; padding:28px 32px; overflow-y:auto; }
 // CONFIG
 // With:
 const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
-  ? 'http://localhost:3000/api'
-  : 'https://internsync-3v10.onrender.com/api';
+  ? 'http://localhost:3000'
+  : 'https://internsync-3v10.onrender.com';
 
-const user = JSON.parse(localStorage.getItem('user') || '{}');
-const MENTOR_ID = user.id;
+const MENTOR_ID = 4;
 // ═══════════════════════════════════════════════════════════
 const photoMap = {
   'Monisha K':     './images/monisha.jpeg',
@@ -353,16 +352,16 @@ const INTERN_META = {
 
 // intern_id map — must match your users table
 const INTERN_ID_MAP = {
-  'Monisha K':      19,
-  'Fiona Shalet':   20,
-  'Stella Mary':    21,
-  'Bhavana R':      22,
-  'Deekshitha S':   23,
-  'Arun Prasad':    24,
-  'Shonn Dias':     25,
-  'Bhoomika Ravi':  26,
-  'Hrithika Gowda': 27,
-  'Vinay Kumar':    28,
+  'Monisha K':      3,
+  'Fiona Shalet':   7,
+  'Stella Mary':    8,
+  'Bhavana R':      9,
+  'Deekshitha S':   10,
+  'Arun Prasad':    11,
+  'Shonn Dias':     12,
+  'Bhoomika Ravi':  13,
+  'Hrithika Gowda': 14,
+  'Vinay Kumar':    15,
 };
 
 const STATUS_CFG = {
