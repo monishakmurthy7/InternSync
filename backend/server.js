@@ -206,16 +206,15 @@ app.use('/uploads', (req, res, next) => {
 // ─────────────────────────────────────────
 // API ROUTES
 // ─────────────────────────────────────────
-app.use('/api/auth',         require('./routes/auth'));
-app.use('/api/internchat',   require('./routes/internchat'));
-app.use('/api/tasks',        require('./routes/tasks'));
-app.use('/api/discussion',   require('./routes/discussion'));
-app.use('/api/attendance',   require('./routes/attendance'));
-app.use('/api/feedback',     require('./routes/feedback'));
-app.use('/api/leave',        require('./routes/leave'));
-app.use('/api/submissions',  require('./routes/submissions'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/internchat', require('./routes/internchat'));
+app.use('/api/tasks', require('./routes/tasks'));
+app.use('/api/discussion', require('./routes/discussion'));
+app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/feedback', require('./routes/feedback'));
+app.use('/api/leave', require('./routes/leave'));
+app.use('/api/submissions', require('./routes/submissions'));
 app.use('/api/certificates', require('./routes/certificates'));
-
 // ─────────────────────────────────────────
 // MENTOR PROFILE ROUTES
 // ─────────────────────────────────────────

@@ -277,7 +277,10 @@ main{ flex:1; padding:32px 36px; overflow-y:auto; }
 </div>
 
 <script>
-const API = 'http://localhost:3000/api';
+const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
+  ? 'http://localhost:3000/api'
+  : 'https://internsync-3v10.onrender.com/api';
+
 
 // ── Photo map — add more interns here as needed ───────────
 const photoMap = {
