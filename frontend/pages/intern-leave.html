@@ -237,42 +237,44 @@ tbody tr:hover{ background:rgba(255,255,255,.03); }
 </div>
 
 <script>
-const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
-  ? 'http://localhost:3000'
-  : 'https://internsync-production-7079.up.railway.app';
 
-// ── Auth helpers ──────────────────────────────────────────
-function getInternId() {
-  return localStorage.getItem('internId')
-      || localStorage.getItem('userId')
-      || localStorage.getItem('id')
-      || null;
-}
+// ── HARDCODED DEMO DATA ──
+const demoLeaves = [
+  {
+    from_date: '2026-03-10',
+    to_date:   '2026-03-11',
+    leave_type:'Medical',
+    reason:    'Doctor appointment and follow-up rest.',
+    status:    'approved'
+  },
+  {
+    from_date: '2026-02-20',
+    to_date:   '2026-02-20',
+    leave_type:'Personal',
+    reason:    'Family function.',
+    status:    'approved'
+  },
+  {
+    from_date: '2026-04-05',
+    to_date:   '2026-04-05',
+    leave_type:'Sick',
+    reason:    'Fever and cold, unable to attend.',
+    status:    'pending'
+  }
+];
 
-function getInternRole() {
-  return localStorage.getItem('role') || null;
-}
-
-function isValidInternSession() {
-  const id   = getInternId();
-  const role = getInternRole();
-  // Must have an ID, must NOT be mentor, and ID must not be 'undefined'
-  return id && id !== 'undefined' && id !== 'null' && role !== 'mentor';
-}
-
-// ── Date helpers ──────────────────────────────────────────
+// ── Date helpers ──
 function fmtDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-US', { month:'short', day:'2-digit', year:'numeric' });
 }
-
 function daysBetween(from, to) {
   if (!from || !to) return '1';
   const d = Math.round((new Date(to) - new Date(from)) / (1000*60*60*24)) + 1;
   return d < 1 ? '1' : String(d);
 }
 
-// ── Badge ─────────────────────────────────────────────────
+// ── Badge ──
 function badgeHTML(status) {
   const map = { approved:'sbadge-approved', pending:'sbadge-pending', rejected:'sbadge-rejected' };
   const cls = map[status] || 'sbadge-pending';
@@ -280,7 +282,7 @@ function badgeHTML(status) {
   return `<span class="sbadge ${cls}">${label}</span>`;
 }
 
-// ── Toast ─────────────────────────────────────────────────
+// ── Toast ──
 function showToast(msg, isError=false) {
   const t    = document.getElementById('toast');
   const icon = document.getElementById('toastIcon');
@@ -292,7 +294,7 @@ function showToast(msg, isError=false) {
   setTimeout(() => t.classList.remove('show'), 3200);
 }
 
-// ── Animated counter ──────────────────────────────────────
+// ── Animated counter ──
 function animateCount(elId, target) {
   const el = document.getElementById(elId);
   let v = 0;
@@ -303,54 +305,39 @@ function animateCount(elId, target) {
   }, 40);
 }
 
-// ── Load summary ──────────────────────────────────────────
-async function loadSummary(internId) {
-  try {
-    const res  = await fetch(`${API}/leave/summary/${internId}`);
-    const data = await res.json();
-    animateCount('sumTotal',    parseInt(data.total)    || 0);
-    animateCount('sumApproved', parseInt(data.approved) || 0);
-    animateCount('sumPending',  parseInt(data.pending)  || 0);
-  } catch(e) {
-    ['sumTotal','sumApproved','sumPending'].forEach(id =>
-      document.getElementById(id).textContent = '0'
-    );
-  }
+// ── Render summary ──
+function loadSummary() {
+  const total    = demoLeaves.length;
+  const approved = demoLeaves.filter(l => l.status === 'approved').length;
+  const pending  = demoLeaves.filter(l => l.status === 'pending').length;
+  animateCount('sumTotal',    total);
+  animateCount('sumApproved', approved);
+  animateCount('sumPending',  pending);
 }
 
-// ── Load history ──────────────────────────────────────────
-async function loadHistory(internId) {
+// ── Render history table ──
+function loadHistory() {
   const tbody = document.getElementById('leaveHistory');
-  try {
-    const res  = await fetch(`${API}/leave/intern/${internId}`);
-    const rows = await res.json();
-
-    if (!rows.length) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No leave requests yet. Apply above!</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = rows.map(r => {
-      const from = r.from_date || r.leave_date;
-      const to   = r.to_date   || r.leave_date;
-      const days = daysBetween(from, to);
-      return `
-        <tr>
-          <td>${fmtDate(from)}</td>
-          <td>${fmtDate(to)}</td>
-          <td><span class="duration-chip">${days}d</span></td>
-          <td>${r.leave_type || '—'}</td>
-          <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-              title="${r.reason || ''}">${r.reason || '—'}</td>
-          <td>${badgeHTML(r.status)}</td>
-        </tr>`;
-    }).join('');
-  } catch(e) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">Failed to load history. Is the server running?</td></tr>`;
+  if (!demoLeaves.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No leave requests yet. Apply above!</td></tr>`;
+    return;
   }
+  tbody.innerHTML = demoLeaves.map(r => {
+    const days = daysBetween(r.from_date, r.to_date);
+    return `
+      <tr>
+        <td>${fmtDate(r.from_date)}</td>
+        <td>${fmtDate(r.to_date)}</td>
+        <td><span class="duration-chip">${days}d</span></td>
+        <td>${r.leave_type}</td>
+        <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+            title="${r.reason}">${r.reason}</td>
+        <td>${badgeHTML(r.status)}</td>
+      </tr>`;
+  }).join('');
 }
 
-// ── Leave type selection ──────────────────────────────────
+// ── Leave type selection ──
 let selectedType = 'Sick';
 function selectType(el) {
   document.querySelectorAll('.type-pill').forEach(p => p.classList.remove('selected'));
@@ -358,67 +345,40 @@ function selectType(el) {
   selectedType = el.textContent.trim();
 }
 
-// ── Date min constraints ──────────────────────────────────
+// ── Date constraints ──
 const today = new Date().toISOString().split('T')[0];
 document.getElementById('fromDate').min = today;
 document.getElementById('toDate').min   = today;
 document.getElementById('fromDate').addEventListener('change', function() {
   document.getElementById('toDate').min = this.value;
   const toVal = document.getElementById('toDate').value;
-  if (toVal && toVal < this.value) {
-    document.getElementById('toDate').value = this.value;
-  }
+  if (toVal && toVal < this.value) document.getElementById('toDate').value = this.value;
 });
 
-// ── Submit leave ──────────────────────────────────────────
-async function submitLeave() {
-  // Role guard — prevent mentor session from submitting
-  if (!isValidInternSession()) {
-    showToast('Please log in as an intern to apply for leave.', true);
-    return;
-  }
-
-  const internId = getInternId();
+// ── Submit leave (local only, no API) ──
+function submitLeave() {
   const fromDate = document.getElementById('fromDate').value;
   const toDate   = document.getElementById('toDate').value;
   const reason   = document.getElementById('reason').value.trim();
 
-  if (!fromDate || !toDate || !reason) {
-    showToast('Please fill in all fields.', true);
-    return;
-  }
-  if (toDate < fromDate) {
-    showToast('End date cannot be before start date.', true);
-    return;
-  }
+  if (!fromDate || !toDate || !reason) { showToast('Please fill in all fields.', true); return; }
+  if (toDate < fromDate) { showToast('End date cannot be before start date.', true); return; }
 
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
   btn.innerHTML = `<div style="width:16px;height:16px;border:2px solid rgba(26,29,15,.4);border-top-color:#1a1d0f;border-radius:50%;animation:spin .7s linear infinite"></div> Sending…`;
 
-  try {
-    const res = await fetch(`${API}/leave/apply`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        intern_id:  internId,
-        leave_type: selectedType,
-        reason,
-        from_date:  fromDate,
-        to_date:    toDate
-      })
-    });
+  // Simulate network delay
+  setTimeout(() => {
+    const newLeave = { from_date:fromDate, to_date:toDate, leave_type:selectedType, reason, status:'pending' };
+    demoLeaves.unshift(newLeave);
 
-    const data = await res.json();
-    if (!res.ok) {
-      showToast(data.error || 'Failed to submit.', true);
-      return;
-    }
-
-    // Optimistically add row to table
+    // Add row to table
     const tbody = document.getElementById('leaveHistory');
-    const days  = daysBetween(fromDate, toDate);
-    const tr    = document.createElement('tr');
+    const emptyRow = tbody.querySelector('.empty-row');
+    if (emptyRow) tbody.innerHTML = '';
+    const days = daysBetween(fromDate, toDate);
+    const tr = document.createElement('tr');
     tr.style.cssText = 'opacity:0;transform:translateY(-8px);transition:opacity .4s,transform .4s';
     tr.innerHTML = `
       <td>${fmtDate(fromDate)}</td>
@@ -427,13 +387,9 @@ async function submitLeave() {
       <td>${selectedType}</td>
       <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${reason}</td>
       <td>${badgeHTML('pending')}</td>`;
-
-    const emptyRow = tbody.querySelector('.empty-row');
-    if (emptyRow) tbody.innerHTML = '';
     tbody.insertBefore(tr, tbody.firstChild);
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      tr.style.opacity = '1';
-      tr.style.transform = 'translateY(0)';
+      tr.style.opacity = '1'; tr.style.transform = 'translateY(0)';
     }));
 
     // Reset form
@@ -444,40 +400,19 @@ async function submitLeave() {
     document.querySelector('.type-pill').classList.add('selected');
     selectedType = 'Sick';
 
-    loadSummary(internId);
-    showToast('Leave request sent to mentor successfully!');
+    loadSummary();
+    showToast('Leave request submitted successfully!');
 
-  } catch(e) {
-    showToast('Network error. Is the server running?', true);
-  } finally {
     btn.disabled = false;
     btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" width="15" height="15"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Request to Mentor`;
-  }
+  }, 800);
 }
 
-// ── Init ──────────────────────────────────────────────────
-(function init() {
-  const internId = getInternId();
-  const role     = getInternRole();
+// ── Init ──
+loadSummary();
+loadHistory();
 
-  if (!isValidInternSession()) {
-    // Show warning, disable form
-    document.getElementById('authWarning').style.display = 'flex';
-    document.getElementById('submitBtn').disabled = true;
-    document.getElementById('submitBtn').textContent = 'Log in as Intern to Apply';
-    ['sumTotal','sumApproved','sumPending'].forEach(id =>
-      document.getElementById(id).textContent = '0'
-    );
-    document.getElementById('leaveHistory').innerHTML =
-      `<tr class="empty-row"><td colspan="6">Please log in as an intern to view leave history.</td></tr>`;
-    return;
-  }
-
-  loadSummary(internId);
-  loadHistory(internId);
-})();
-
-// ── Mesh background ───────────────────────────────────────
+// ── Mesh background ──
 const cvs = document.getElementById('meshCanvas'), ctx = cvs.getContext('2d');
 let W, H;
 function rsz() { W = cvs.width = innerWidth; H = cvs.height = innerHeight; }
@@ -491,75 +426,37 @@ const pts = [
   {ax:.55,ay:.88,rx:.24,ry:.18,fx:.00017,fy:.00023,px:1.8,py:2.7,r:490,c:'rgba(28,32,16,'}
 ];
 function mesh(t) {
-  ctx.fillStyle = '#1a1d0f'; ctx.fillRect(0,0,W,H);
-  pts.forEach(p => {
-    const x = W*(p.ax + p.rx*Math.sin(p.fx*t+p.px));
-    const y = H*(p.ay + p.ry*Math.cos(p.fy*t+p.py));
-    const g = ctx.createRadialGradient(x,y,0,x,y,p.r);
+  ctx.fillStyle='#1a1d0f'; ctx.fillRect(0,0,W,H);
+  pts.forEach(p=>{
+    const x=W*(p.ax+p.rx*Math.sin(p.fx*t+p.px)), y=H*(p.ay+p.ry*Math.cos(p.fy*t+p.py));
+    const g=ctx.createRadialGradient(x,y,0,x,y,p.r);
     g.addColorStop(0,p.c+'0.36)'); g.addColorStop(.5,p.c+'0.11)'); g.addColorStop(1,p.c+'0)');
-    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
   });
-  const v = ctx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,H*.88);
+  const v=ctx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,H*.88);
   v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.5)');
-  ctx.fillStyle = v; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=v; ctx.fillRect(0,0,W,H);
 }
-let t0 = null;
-(function loop(ts) { if(!t0) t0=ts; mesh(ts-t0); requestAnimationFrame(loop); })(0);
-
-const gl = document.getElementById('glow');
-addEventListener('mousemove', e => { gl.style.left = e.clientX+'px'; gl.style.top = e.clientY+'px'; });
-
-// Tilt effect on cards
-document.querySelectorAll('.card').forEach(card => {
-  card.addEventListener('mousemove', e => {
-    const r = card.getBoundingClientRect();
-    const dx = (e.clientX-r.left-r.width/2)/(r.width/2);
-    const dy = (e.clientY-r.top-r.height/2)/(r.height/2);
-    card.style.transform = `perspective(900px) rotateY(${dx*5}deg) rotateX(${-dy*5}deg) translateY(-5px) scale(1.01)`;
-    card.style.boxShadow = `${-dx*10}px ${-dy*10}px 36px rgba(217,164,65,.16),0 16px 48px rgba(0,0,0,.4)`;
-  });
-  card.addEventListener('mouseleave', () => {
-    card.style.transition = 'transform .5s cubic-bezier(.34,1.56,.64,1),box-shadow .4s';
-    card.style.transform  = 'perspective(900px) rotateY(0) rotateX(0) translateY(0) scale(1)';
-    card.style.boxShadow  = '0 8px 32px rgba(0,0,0,.35)';
-    setTimeout(() => card.style.transition = '', 500);
-  });
-  card.addEventListener('mouseenter', () =>
-    card.style.transition = 'transform .12s ease,box-shadow .12s ease'
-  );
+let t0=null; (function loop(ts){ if(!t0)t0=ts; mesh(ts-t0); requestAnimationFrame(loop); })(0);
+const gl=document.getElementById('glow');
+addEventListener('mousemove',e=>{ gl.style.left=e.clientX+'px'; gl.style.top=e.clientY+'px'; });
+document.querySelectorAll('.card').forEach(card=>{
+  card.addEventListener('mousemove',e=>{ const r=card.getBoundingClientRect(); const dx=(e.clientX-r.left-r.width/2)/(r.width/2),dy=(e.clientY-r.top-r.height/2)/(r.height/2); card.style.transform=`perspective(900px) rotateY(${dx*5}deg) rotateX(${-dy*5}deg) translateY(-5px) scale(1.01)`; card.style.boxShadow=`${-dx*10}px ${-dy*10}px 36px rgba(217,164,65,.16),0 16px 48px rgba(0,0,0,.4)`; });
+  card.addEventListener('mouseleave',()=>{ card.style.transition='transform .5s cubic-bezier(.34,1.56,.64,1),box-shadow .4s'; card.style.transform='perspective(900px) rotateY(0) rotateX(0) translateY(0) scale(1)'; card.style.boxShadow='0 8px 32px rgba(0,0,0,.35)'; setTimeout(()=>card.style.transition='',500); });
+  card.addEventListener('mouseenter',()=>card.style.transition='transform .12s ease,box-shadow .12s ease');
 });
-
-document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('mousemove', e => {
-    const r = item.getBoundingClientRect();
-    if (!item.classList.contains('active'))
-      item.style.transform = `translateY(${(e.clientY-r.top-r.height/2)*.12}px)`;
-  });
-  item.addEventListener('mouseleave', () => {
-    item.style.transition = 'transform .4s cubic-bezier(.34,1.56,.64,1)';
-    item.style.transform  = 'translateY(0)';
-    setTimeout(() => item.style.transition = '', 400);
-  });
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('mousemove',e=>{ const r=item.getBoundingClientRect(); if(!item.classList.contains('active')) item.style.transform=`translateY(${(e.clientY-r.top-r.height/2)*.12}px)`; });
+  item.addEventListener('mouseleave',()=>{ item.style.transition='transform .4s cubic-bezier(.34,1.56,.64,1)'; item.style.transform='translateY(0)'; setTimeout(()=>item.style.transition='',400); });
 });
-
-// Floating particles
-for (let i = 0; i < 10; i++) {
-  const p = document.createElement('div');
-  p.className = 'particle';
-  const sz = 2 + Math.random()*4;
-  Object.assign(p.style, {
-    width: sz+'px', height: sz+'px',
-    left: Math.random()*100+'vw',
-    top: (60+Math.random()*40)+'vh',
-    animationDuration: (9+Math.random()*14)+'s',
-    animationDelay: Math.random()*10+'s'
-  });
+for(let i=0;i<10;i++){
+  const p=document.createElement('div'); p.className='particle';
+  const sz=2+Math.random()*4;
+  Object.assign(p.style,{ width:sz+'px',height:sz+'px',left:Math.random()*100+'vw',top:(65+Math.random()*35)+'vh',animationDuration:(9+Math.random()*14)+'s',animationDelay:Math.random()*10+'s' });
   document.body.appendChild(p);
 }
-
-// Spinner keyframe
-const style = document.createElement('style');
-style.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+const style=document.createElement('style');
+style.textContent='@keyframes spin{to{transform:rotate(360deg)}}';
 document.head.appendChild(style);
 </script>
 </body>

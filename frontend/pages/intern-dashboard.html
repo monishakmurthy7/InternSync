@@ -375,8 +375,7 @@ main{ flex:1; padding:32px 36px; overflow-y:auto; }
 const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
   ? 'http://localhost:3000'
   : 'https://internsync-production-7079.up.railway.app';
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-const INTERN_ID = user.id;
+ const INTERN_ID = 3; // hardcoded: Monisha K
 
 // ── MESH BACKGROUND ──────────────────────────────────────────
 const cvs = document.getElementById('meshCanvas'), ctx = cvs.getContext('2d');
@@ -554,21 +553,38 @@ async function loadFeedback(){
   const btn = document.getElementById('refreshBtn');
   btn.classList.add('spinning');
 
-  try {
-    const res  = await fetch(`${API_BASE}/api/feedback?intern_id=${INTERN_ID}`);
-    const data = await res.json();
-    if(!res.ok || !data.success) throw new Error(data.message || 'Failed');
-    renderFeedback(data.feedback);
-  } catch(err) {
-    console.error('loadFeedback:', err);
-    document.getElementById('fbContainer').innerHTML = `
-      <div class="fb-empty">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <p style="color:var(--red);">Couldn't load feedback — make sure the server is running.</p>
-      </div>`;
-  } finally {
+  // ── HARDCODED DEMO DATA ──
+  const demoFeedback = [
+    {
+      id: 1,
+      rating: 5,
+      message: "Monisha has shown exceptional progress this week. The dashboard UI she built is clean, responsive, and well-structured. Her attention to detail with the animations and card interactions is impressive.",
+      tags: ['Top Performer', 'Great Work', 'Excellent UI'],
+      improvements: ['Add more comments to your JS code', 'Consider mobile responsiveness'],
+      efficiency: 88,
+      punctuality: 92,
+      codeQuality: 85,
+      communication: 90,
+      created_at: '2026-04-10T10:30:00'
+    },
+    {
+      id: 2,
+      rating: 4,
+      message: "Good work on the backend integration tasks. API handling is clean and error boundaries are well thought out. Keep pushing on the Node.js connection task — you're almost there.",
+      tags: ['On Track', 'Strong Code'],
+      improvements: ['Improve async error handling', 'Review JWT implementation'],
+      efficiency: 78,
+      punctuality: 85,
+      codeQuality: 80,
+      communication: 75,
+      created_at: '2026-03-28T14:15:00'
+    }
+  ];
+
+  setTimeout(() => {
+    renderFeedback(demoFeedback);
     btn.classList.remove('spinning');
-  }
+  }, 600);
 }
 
 // ── FLOATING PARTICLES ───────────────────────────────────────

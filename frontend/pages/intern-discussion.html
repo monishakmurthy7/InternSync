@@ -309,19 +309,56 @@ function escapeHTML(str) {
 // ─────────────────────────────────────────────────────────────
 async function loadAllMessages() {
   setStatus('Loading messages…', '');
-  try {
-    const res  = await fetch(`${API}/discussion`);
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message);
-    data.messages.forEach(m => renderMessage(m, false));
-    scrollBottom();
-    setStatus('', '');
-  } catch (err) {
-    setStatus('⚠ Could not load messages: ' + err.message, 'err');
-    console.error('loadAllMessages:', err);
-  }
+
+  // ── HARDCODED DEMO MESSAGES ──
+  const demoMessages = [
+    { id:1, sender_name:'Bhavana R',      message:'Good morning everyone! Ready for today\'s tasks 💪', created_at:'2026-05-22T09:00:00' },
+    { id:2, sender_name:'Fiona Shalet',   message:'Morning! Just pushed the updated navbar component to the repo.', created_at:'2026-05-22T09:05:00' },
+    { id:3, sender_name:'Arun Prasad',    message:'Hey team — anyone else getting CORS errors on the feedback endpoint?', created_at:'2026-05-22T09:12:00' },
+    { id:4, sender_name:'Monisha K',      message:'Yes Arun! I fixed it by adding the origin to the CORS config in server.js. Check line 14.', created_at:'2026-05-22T09:15:00' },
+    { id:5, sender_name:'Arun Prasad',    message:'Oh nice, thanks Monisha! That worked 🙌', created_at:'2026-05-22T09:17:00' },
+    { id:6, sender_name:'Shonn Dias',     message:'Does anyone have the MySQL schema for the leave_requests table? Can\'t find it in the repo.', created_at:'2026-05-22T10:00:00' },
+    { id:7, sender_name:'Deekshitha S',   message:'Shonn I\'ll send it to you on chat. It\'s in db/schema.sql', created_at:'2026-05-22T10:03:00' },
+    { id:8, sender_name:'Hrithika Gowda', message:'Quick reminder — task submissions are due by 5pm today!', created_at:'2026-05-22T11:30:00' },
+    { id:9, sender_name:'Bhoomika Ravi',  message:'Thanks for the heads up Hrithika 👍 Almost done with mine.', created_at:'2026-05-22T11:35:00' },
+    { id:10, sender_name:'Monisha K',     message:'Good luck everyone on the submission! We\'ve got this 🚀', created_at:'2026-05-22T11:40:00' },
+  ];
+
+  demoMessages.forEach(m => renderMessage(m, false));
+  scrollBottom();
+  setStatus('', '');
 }
 
+function startPolling() {
+  // No polling needed for demo — disabled
+}
+
+async function sendMessage() {
+  const input = document.getElementById('msgInput');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  input.disabled = true;
+  document.getElementById('sendBtn').disabled = true;
+
+  // Simulate sending with a fake message object
+  const fakeMsg = {
+    id:          Date.now(),
+    sender_name: ME.name,
+    message:     text,
+    created_at:  new Date().toISOString()
+  };
+
+  setTimeout(() => {
+    renderMessage(fakeMsg, true);
+    scrollBottom();
+    input.value = '';
+    input.style.height = 'auto';
+    input.disabled = false;
+    document.getElementById('sendBtn').disabled = false;
+    input.focus();
+  }, 200);
+}
 // ─────────────────────────────────────────────────────────────
 // POLLING
 // ─────────────────────────────────────────────────────────────
