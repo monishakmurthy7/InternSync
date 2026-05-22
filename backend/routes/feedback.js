@@ -35,8 +35,6 @@ function authMiddleware(req, res, next) {
 // ─────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
-    // Accept mentor_id from query OR fall back to a default (9) for now
-    // When auth is wired up, replace 9 with req.user.id
     const mentorId = req.query.mentor_id ? parseInt(req.query.mentor_id) : 9;
 
     let sql = `
@@ -80,6 +78,32 @@ router.get('/', async (req, res) => {
     res.json({ success: true, feedback });
   } catch (err) {
     console.error('GET /api/feedback error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ─────────────────────────────────────────
+// GET /api/feedback/stats?mentor_id=9
+// Returns aggregated stats for the stats row cards
+// ─────────────────────────────────────────
+router.get('/stats', async (req, res) => {
+  try {
+    const mentorId = req.query.mentor_id ? parseInt(req.query.mentor_id) : 9;
+
+    const [[stats]] = await dbp.query(
+      `SELECT
+         COUNT(*)                                      AS total,
+         COUNT(DISTINCT intern_id)                     AS interns_covered,
+         ROUND(AVG(rating), 1)                         AS avg_rating,
+         SUM(created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS this_week
+       FROM feedback
+       WHERE mentor_id = ?`,
+      [mentorId]
+    );
+
+    res.json({ success: true, stats });
+  } catch (err) {
+    console.error('GET /api/feedback/stats error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -159,27 +183,24 @@ router.post('/', async (req, res) => {
 });
 
 // ─────────────────────────────────────────
-// GET /api/feedback/stats?mentor_id=9
-// Returns aggregated stats for the stats row cards
+// DELETE /api/feedback/:id
+// Deletes a single feedback record by ID
 // ─────────────────────────────────────────
-router.get('/stats', async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const mentorId = req.query.mentor_id ? parseInt(req.query.mentor_id) : 9;
+    const id = parseInt(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: 'Invalid ID' });
 
-    const [[stats]] = await dbp.query(
-      `SELECT
-         COUNT(*)                                      AS total,
-         COUNT(DISTINCT intern_id)                     AS interns_covered,
-         ROUND(AVG(rating), 1)                         AS avg_rating,
-         SUM(created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS this_week
-       FROM feedback
-       WHERE mentor_id = ?`,
-      [mentorId]
+    const [result] = await dbp.query(
+      'DELETE FROM feedback WHERE id = ?', [id]
     );
 
-    res.json({ success: true, stats });
+    if (result.affectedRows === 0)
+      return res.status(404).json({ success: false, message: 'Not found' });
+
+    res.json({ success: true, deleted: id });
   } catch (err) {
-    console.error('GET /api/feedback/stats error:', err);
+    console.error('DELETE /api/feedback/:id error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });

@@ -306,6 +306,26 @@ main{ flex:1; padding:28px 32px; overflow-y:auto; }
 <div class="toast" id="toast"></div>
 
 <script>
+  async function deleteFeedback(id) {
+  if (!confirm('Delete this feedback?')) return;
+  try {
+    await apiFetch(`/api/feedback/${id}`, { method: 'DELETE' });
+    fbHistory = fbHistory.filter(f => f.id !== id);
+    // Rebuild derived maps
+    fbCountByIntern = {};
+    lastRatingByIntern = {};
+    fbHistory.forEach(f => {
+      fbCountByIntern[f.intern] = (fbCountByIntern[f.intern] || 0) + 1;
+      if (!lastRatingByIntern[f.intern]) lastRatingByIntern[f.intern] = f.rating;
+    });
+    renderHistory();
+    await loadStats();
+    renderInternList();
+    showToast('✓ Feedback deleted');
+  } catch (err) {
+    showToast('⚠ Delete failed: ' + err.message, true);
+  }
+}
 // ═══════════════════════════════════════════════════════════
 // CONFIG
 // With:
@@ -732,6 +752,7 @@ function renderHistory() {
           </div>
           <div class="fhi-stars">${'⭐'.repeat(f.rating)}${'☆'.repeat(5-f.rating)}</div>
           <div class="fhi-date">${f.date}</div>
+<button onclick="deleteFeedback(${f.id})" title="Delete" style="margin-left:10px;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.2);color:var(--red);border-radius:8px;padding:3px 10px;font-size:10px;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;transition:background .2s;" onmouseover="this.style.background='rgba(255,107,107,.25)'" onmouseout="this.style.background='rgba(255,107,107,.1)'">✕ Delete</button>
         </div>
         <div class="fhi-text">"${f.message || f.comment || f.text || ''}"</div>
         ${tagHTML ? `<div class="fhi-tags">${tagHTML}</div>` : ''}
