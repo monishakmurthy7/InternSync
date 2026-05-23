@@ -79,10 +79,6 @@ main{ flex:1; padding:28px 32px; overflow-y:auto; }
 .status-reviewing{ background:rgba(217,164,65,.1);  border:1px solid rgba(217,164,65,.25);  color:var(--accent); }
 .status-approved { background:rgba(45,212,191,.1);  border:1px solid rgba(45,212,191,.25);  color:var(--teal); }
 .status-rejected { background:rgba(255,107,107,.1); border:1px solid rgba(255,107,107,.25); color:var(--red); }
-/* live badge for DB submissions */
-.badge-live{ display:inline-flex;align-items:center;gap:4px;font-family:'Syne',sans-serif;font-size:8px;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.06em;background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.25);color:var(--teal); }
-.badge-live::before{ content:'';width:5px;height:5px;border-radius:50%;background:var(--teal);animation:pulse 1.5s ease infinite; }
-@keyframes pulse{ 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
 .sub-card-body{ padding:0 16px; max-height:0; overflow:hidden; transition:max-height .4s cubic-bezier(.4,0,.2,1), padding .3s; }
 .sub-card-body.open{ max-height:700px; padding:14px 16px; }
 .file-preview-box{ background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.06); border-radius:10px; overflow:hidden; margin-bottom:14px; min-height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
@@ -115,12 +111,8 @@ main{ flex:1; padding:28px 32px; overflow-y:auto; }
 .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 .particle{ position:fixed; border-radius:50%; background:rgba(217,164,65,.12); pointer-events:none; z-index:2; animation:floatUp linear infinite; }
 @keyframes floatUp{ 0%{transform:translateY(0) scale(1);opacity:.4} 50%{transform:translateY(-70px) scale(1.1);opacity:.15} 100%{transform:translateY(-140px) scale(.8);opacity:0} }
-/* refresh btn */
-.refresh-btn{ padding:7px 14px; border-radius:20px; font-size:11px; font-family:'Syne',sans-serif; font-weight:700; cursor:pointer; border:1px solid rgba(45,212,191,.25); color:var(--teal); background:rgba(45,212,191,.08); transition:all .2s; display:flex; align-items:center; gap:5px; }
-.refresh-btn:hover{ background:rgba(45,212,191,.16); }
-.refresh-btn svg{ width:12px; height:12px; stroke:currentColor; }
-.spinning{ animation:spin .8s linear infinite; }
-@keyframes spin{ to{transform:rotate(360deg)} }
+.local-badge{ display:inline-flex; align-items:center; gap:5px; font-family:'Syne',sans-serif; font-size:9px; font-weight:700; padding:3px 9px; border-radius:20px; letter-spacing:.06em; background:rgba(217,164,65,.1); border:1px solid rgba(217,164,65,.25); color:var(--accent); }
+.local-badge::before{ content:''; width:5px; height:5px; border-radius:50%; background:var(--accent); }
 </style>
 </head>
 <body>
@@ -205,18 +197,14 @@ main{ flex:1; padding:28px 32px; overflow-y:auto; }
         <button class="fp" onclick="setFilter('approved',this)">Approved</button>
         <button class="fp" onclick="setFilter('rejected',this)">Rejected</button>
       </div>
-      <!-- Refresh button to re-fetch live DB submissions -->
-      <button class="refresh-btn" onclick="fetchLiveSubmissions()" id="refreshBtn" title="Refresh live submissions from server">
-        <svg id="refreshIcon" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
-        Refresh
-      </button>
+      <!-- Local mode indicator — no server needed -->
+      <span class="local-badge">Local Mode</span>
     </div>
 
     <div class="main-grid">
       <div class="card" id="c1">
         <div class="card-title">
           Interns <span id="internListCount" style="color:var(--teal);font-size:10px;"></span>
-          <span id="liveIndicator" style="font-size:9px;color:var(--muted);font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0;font-weight:400;"></span>
         </div>
         <div class="intern-list" id="internList"></div>
       </div>
@@ -258,147 +246,58 @@ main{ flex:1; padding:28px 32px; overflow-y:auto; }
 <div class="toast" id="toast"></div>
 
 <script>
-const API = 'http://localhost:3000/api';
-const BACKEND_ORIGIN = 'http://localhost:3000';
-
-/* ── HARDCODED BASE DATA (always present) ── */
+/* ── HARDCODED DATA (local mode — no server needed) ── */
 const INTERNS=[
-  {name:'Monisha K',  role:'Full Stack Intern', color:'#d9a441', bg:'rgba(217,164,65'},
-  {name:'Fiona shalet', role:'Frontend Intern',   color:'#2dd4bf', bg:'rgba(45,212,191'},
-  {name:'Stella Mary',role:'Backend Intern',    color:'#ff6b6b', bg:'rgba(255,107,107'},
-  {name:'Bhavana R', role:'Full Stack Intern', color:'#4ade80', bg:'rgba(74,222,128'},
-  {name:'Deekshitha S', role:'UI/UX Intern',      color:'#c084fc', bg:'rgba(168,85,247'},
-  {name:'Arun Prasad', role:'Backend Intern',     color:'#fbbf24', bg:'rgba(251,191,36'},
-  {name:'Shonn Dias',  role:'FFull Stack Intern', color:'#38bdf8', bg:'rgba(56,189,248'},
-  {name:'Bhoomika Ravi', role:'Frontend Intern',   color:'#fb7185', bg:'rgba(251,113,133'},
-  {name:'Hrithika Gowda', role:'Backend Intern',    color:'#818cf8', bg:'rgba(99,102,241'},
-  {name:'Vinay Kumar',role:'Full Stack Intern', color:'#2dd4bf', bg:'rgba(20,184,166'},
+  {name:'Monisha K',    role:'Full Stack Intern',  color:'#d9a441', bg:'rgba(217,164,65'},
+  {name:'Fiona shalet', role:'Frontend Intern',    color:'#2dd4bf', bg:'rgba(45,212,191'},
+  {name:'Stella Mary',  role:'Backend Intern',     color:'#ff6b6b', bg:'rgba(255,107,107'},
+  {name:'Bhavana R',    role:'Full Stack Intern',  color:'#4ade80', bg:'rgba(74,222,128'},
+  {name:'Deekshitha S', role:'UI/UX Intern',       color:'#c084fc', bg:'rgba(168,85,247'},
+  {name:'Arun Prasad',  role:'Backend Intern',     color:'#fbbf24', bg:'rgba(251,191,36'},
+  {name:'Shonn Dias',   role:'Full Stack Intern',  color:'#38bdf8', bg:'rgba(56,189,248'},
+  {name:'Bhoomika Ravi',role:'Frontend Intern',    color:'#fb7185', bg:'rgba(251,113,133'},
+  {name:'Hrithika Gowda',role:'Backend Intern',    color:'#818cf8', bg:'rgba(99,102,241'},
+  {name:'Vinay Kumar',  role:'Full Stack Intern',  color:'#2dd4bf', bg:'rgba(20,184,166'},
 ];
 
 const photoMap = {
-  'Monisha K':  './images/monisha.jpeg',
-  'Fiona shalet': './images/fiona.jpeg',
-  'Stella Mary':'./images/stella.jpeg',
-  'Bhavana R': './images/bhavana.jpeg',
-  'Deekshitha S': './images/deekshitha.jpeg',
-  'Arun Prasad':'./images/arun.jpeg',
-  'Shonn Dias':  './images/shonn.jpeg',
-  'Bhoomika Ravi': './images/bhoomika.jpeg',
-  'Hrithika Gowda': './images/hrithika.jpeg',
-  'Vinay Kumar':'./images/vinay.jpeg',
+  'Monisha K':       './images/monisha.jpeg',
+  'Fiona shalet':    './images/fiona.jpeg',
+  'Stella Mary':     './images/stella.jpeg',
+  'Bhavana R':       './images/bhavana.jpeg',
+  'Deekshitha S':    './images/deekshitha.jpeg',
+  'Arun Prasad':     './images/arun.jpeg',
+  'Shonn Dias':      './images/shonn.jpeg',
+  'Bhoomika Ravi':   './images/bhoomika.jpeg',
+  'Hrithika Gowda':  './images/hrithika.jpeg',
+  'Vinay Kumar':     './images/vinay.jpeg',
 };
 
-/* Hardcoded submissions — these always show */
-const HARDCODED_SUBS=[
-  {id:'h1', intern:'Monisha K',  task:'Database Optimisation',    type:'pdf',  file:'Database_Optimisation_Monisha.pdf',  github:'https://github.com/monisha/db-opt',         date:'2026-03-20',status:'pending',  feedback:'',rating:0,size:'2.3 MB', source:'hardcoded'},
-  {id:'h2', intern:'Monisha K',  task:'Login Page UI',             type:'docx', file:'Login_UI_Report_Monisha.docx',        github:'https://github.com/monisha/login-ui',        date:'2026-03-15',status:'approved', feedback:'Excellent work! Clean responsive design with great micro-interactions.',rating:5,size:'1.1 MB', source:'hardcoded'},
-  {id:'h3', intern:'Monisha K',  task:'Auth Flow Setup',           type:'pdf',  file:'Auth_Flow_Documentation.pdf',         github:'https://github.com/monisha/auth-flow',       date:'2026-03-10',status:'approved', feedback:'Well-structured auth implementation. JWT handling is solid.',rating:4,size:'890 KB', source:'hardcoded'},
-  {id:'h4', intern:'Fiona shalet', task:'React Component Library',   type:'pdf',  file:'Component_Library_Fiona.pdf',         github:'https://github.com/fiona/component-lib',     date:'2026-03-19',status:'reviewing',feedback:'',rating:0,size:'3.1 MB', source:'hardcoded'},
-  {id:'h5', intern:'Fiona shalet', task:'Responsive Dashboard UI',   type:'docx', file:'Dashboard_Report_Fiona.docx',         github:'https://github.com/fiona/dashboard',         date:'2026-03-12',status:'approved', feedback:'Outstanding responsiveness across all breakpoints.',rating:5,size:'1.4 MB', source:'hardcoded'},
-  {id:'h6', intern:'Stella Mary',task:'REST API Documentation',    type:'pdf',  file:'API_Docs_Stella.pdf',                  github:'https://github.com/stella/api-docs',          date:'2026-03-18',status:'pending',  feedback:'',rating:0,size:'1.7 MB', source:'hardcoded'},
-  {id:'h7', intern:'Stella Mary',task:'JWT Authentication',        type:'docx', file:'JWT_Implementation_Stella.docx',       github:'https://github.com/stella/jwt-auth',          date:'2026-03-08',status:'rejected', feedback:'Authentication logic has security gaps. Please review token expiry handling.',rating:2,size:'760 KB', source:'hardcoded'},
-  {id:'h8', intern:'Arun Prasad', task:'MySQL Schema Design',       type:'pdf',  file:'Schema_Design_Arun.pdf',             github:'https://github.com/arun/mysql-schema',      date:'2026-03-17',status:'approved', feedback:'Excellent ER diagram and normalization. Indexes are well-placed.',rating:5,size:'2.0 MB', source:'hardcoded'},
-  {id:'h9', intern:'Bhavana R', task:'Figma Prototype Design',    type:'pdf',  file:'Figma_Proto_Bhavana.pdf',                 github:'https://github.com/bhavana/mysql-schema', date:'2026-03-16',status:'reviewing',feedback:'',rating:0,size:'5.2 MB', source:'hardcoded'},
-  {id:'h10',intern:'Deekshitha S',task:'Python Backend Script',     type:'docx', file:'Python_Backend_Deekshitha.docx',            github:'https://github.com/deekshitha/python-backend', date:'2026-03-14',status:'approved', feedback:'Clean code structure. Django models are well-designed.',rating:4,size:'980 KB', source:'hardcoded'},
-  {id:'h11',intern:'Shonn Dias',  task:'Vue.js Dashboard',          type:'pdf',  file:'VueDashboard_Shonn.pdf',              github:'https://github.com/shonn/vue-dash',          date:'2026-03-13',status:'pending',  feedback:'',rating:0,size:'1.9 MB', source:'hardcoded'},
-  {id:'h12',intern:'Bhoomika Ravi', task:'TypeScript Components',     type:'pdf',  file:'TS_Components_Bhoomika.pdf',              github:'https://github.com/bhoomika/ts-components', date:'2026-03-20',status:'pending',  feedback:'',rating:0,size:'1.3 MB', source:'hardcoded'},
-  {id:'h13',intern:'Hrithika Gowda', task:'Spring Boot API',           type:'docx', file:'SpringBoot_API_Hrithika.docx',             github:'https://github.com/hrithika/spring-api',   date:'2026-03-11',status:'rejected', feedback:'API endpoint structure needs rework. Missing error handling for edge cases.',rating:2,size:'840 KB', source:'hardcoded'},
-  {id:'h14',intern:'Vinay Kumar',task:'GraphQL Integration',       type:'pdf',  file:'GraphQL_Vinay.pdf',                    github:'https://github.com/vinay/graphql-app',        date:'2026-03-18',status:'reviewing',feedback:'',rating:0,size:'2.2 MB', source:'hardcoded'},
+const SUBS=[
+  {id:'h1',  intern:'Monisha K',     task:'Database Optimisation',      type:'pdf',  file:'Database_Optimisation_Monisha.pdf',    github:'https://github.com/monisha/db-opt',            date:'2026-03-20',status:'pending',   feedback:'',rating:0,size:'2.3 MB'},
+  {id:'h2',  intern:'Monisha K',     task:'Login Page UI',               type:'docx', file:'Login_UI_Report_Monisha.docx',          github:'https://github.com/monisha/login-ui',           date:'2026-03-15',status:'approved',  feedback:'Excellent work! Clean responsive design with great micro-interactions.',rating:5,size:'1.1 MB'},
+  {id:'h3',  intern:'Monisha K',     task:'Auth Flow Setup',             type:'pdf',  file:'Auth_Flow_Documentation.pdf',           github:'https://github.com/monisha/auth-flow',          date:'2026-03-10',status:'approved',  feedback:'Well-structured auth implementation. JWT handling is solid.',rating:4,size:'890 KB'},
+  {id:'h4',  intern:'Fiona shalet',  task:'React Component Library',    type:'pdf',  file:'Component_Library_Fiona.pdf',           github:'https://github.com/fiona/component-lib',        date:'2026-03-19',status:'reviewing', feedback:'',rating:0,size:'3.1 MB'},
+  {id:'h5',  intern:'Fiona shalet',  task:'Responsive Dashboard UI',    type:'docx', file:'Dashboard_Report_Fiona.docx',           github:'https://github.com/fiona/dashboard',            date:'2026-03-12',status:'approved',  feedback:'Outstanding responsiveness across all breakpoints.',rating:5,size:'1.4 MB'},
+  {id:'h6',  intern:'Stella Mary',   task:'REST API Documentation',     type:'pdf',  file:'API_Docs_Stella.pdf',                   github:'https://github.com/stella/api-docs',            date:'2026-03-18',status:'pending',   feedback:'',rating:0,size:'1.7 MB'},
+  {id:'h7',  intern:'Stella Mary',   task:'JWT Authentication',         type:'docx', file:'JWT_Implementation_Stella.docx',        github:'https://github.com/stella/jwt-auth',            date:'2026-03-08',status:'rejected',  feedback:'Authentication logic has security gaps. Please review token expiry handling.',rating:2,size:'760 KB'},
+  {id:'h8',  intern:'Arun Prasad',   task:'MySQL Schema Design',        type:'pdf',  file:'Schema_Design_Arun.pdf',                github:'https://github.com/arun/mysql-schema',          date:'2026-03-17',status:'approved',  feedback:'Excellent ER diagram and normalization. Indexes are well-placed.',rating:5,size:'2.0 MB'},
+  {id:'h9',  intern:'Bhavana R',     task:'Figma Prototype Design',     type:'pdf',  file:'Figma_Proto_Bhavana.pdf',               github:'https://github.com/bhavana/mysql-schema',       date:'2026-03-16',status:'reviewing', feedback:'',rating:0,size:'5.2 MB'},
+  {id:'h10', intern:'Deekshitha S',  task:'Python Backend Script',      type:'docx', file:'Python_Backend_Deekshitha.docx',        github:'https://github.com/deekshitha/python-backend',  date:'2026-03-14',status:'approved',  feedback:'Clean code structure. Django models are well-designed.',rating:4,size:'980 KB'},
+  {id:'h11', intern:'Shonn Dias',    task:'Vue.js Dashboard',           type:'pdf',  file:'VueDashboard_Shonn.pdf',                github:'https://github.com/shonn/vue-dash',             date:'2026-03-13',status:'pending',   feedback:'',rating:0,size:'1.9 MB'},
+  {id:'h12', intern:'Bhoomika Ravi', task:'TypeScript Components',      type:'pdf',  file:'TS_Components_Bhoomika.pdf',            github:'https://github.com/bhoomika/ts-components',     date:'2026-03-20',status:'pending',   feedback:'',rating:0,size:'1.3 MB'},
+  {id:'h13', intern:'Hrithika Gowda',task:'Spring Boot API',            type:'docx', file:'SpringBoot_API_Hrithika.docx',          github:'https://github.com/hrithika/spring-api',        date:'2026-03-11',status:'rejected',  feedback:'API endpoint structure needs rework. Missing error handling for edge cases.',rating:2,size:'840 KB'},
+  {id:'h14', intern:'Vinay Kumar',   task:'GraphQL Integration',        type:'pdf',  file:'GraphQL_Vinay.pdf',                     github:'https://github.com/vinay/graphql-app',          date:'2026-03-18',status:'reviewing', feedback:'',rating:0,size:'2.2 MB'},
 ];
 
-/* Live SUBS array = hardcoded + DB-fetched (merged, deduplicated) */
-let SUBS = [...HARDCODED_SUBS];
-
-/* ── Convert DB row → SUBS-compatible object ── */
-function dbRowToSub(r) {
-  const ext = (r.file_name || '').split('.').pop().toLowerCase();
-  const type = ext === 'pdf' ? 'pdf' : (ext === 'docx' ? 'docx' : (ext === 'doc' ? 'doc' : 'pdf'));
-  // Map DB status: on_time/late → pending for display; keep approved/rejected/reviewing as-is
-  let status = (r.status || 'pending').toLowerCase();
-  if (status === 'on_time' || status === 'late') status = 'pending';
-
-  return {
-    id: 'db_' + r.id,
-    dbId: r.id,                          // keep real DB id for feedback PUT
-    intern: 'Monisha K',                 // all DB submissions are from Monisha K (intern login)
-    internName: r.intern_name || 'Monisha K',
-    task: r.task_name || 'Unnamed Task',
-    type,
-    file: r.file_name || 'No file',
-    filePath: r.file_path || null,
-    github: r.github_url || '',
-    date: r.submitted_at ? r.submitted_at.split('T')[0] : new Date().toISOString().split('T')[0],
-    status,
-    feedback: r.feedback || '',
-    rating: 0,
-    size: '—',
-    source: 'live'                       // marks this as a real DB entry
-  };
-}
-
-/* ── Fetch live submissions from /api/submissions/all ── */
-async function fetchLiveSubmissions() {
-  const btn = document.getElementById('refreshBtn');
-  const icon = document.getElementById('refreshIcon');
-  const indicator = document.getElementById('liveIndicator');
-  icon.classList.add('spinning');
-  btn.disabled = true;
-  indicator.textContent = 'Fetching…';
-
-  try {
-    const res = await fetch(`${API_BASE}/submissions/all`);
-    if (!res.ok) throw new Error(`Server ${res.status}`);
-    const rows = await res.json();
-
-    // Remove previously fetched live entries, keep hardcoded ones
-    SUBS = [...HARDCODED_SUBS];
-
-    if (Array.isArray(rows) && rows.length > 0) {
-      const liveEntries = rows.map(dbRowToSub);
-
-      // Deduplicate: if a live entry's task_name matches a hardcoded one for same intern, skip adding duplicate
-      liveEntries.forEach(live => {
-        const isDupe = HARDCODED_SUBS.some(h =>
-          h.intern.toLowerCase() === live.intern.toLowerCase() &&
-          h.task.toLowerCase() === live.task.toLowerCase()
-        );
-        if (!isDupe) {
-          SUBS.push(live);
-        }
-      });
-
-      const newCount = liveEntries.filter(l => !HARDCODED_SUBS.some(h =>
-        h.intern.toLowerCase() === l.intern.toLowerCase() &&
-        h.task.toLowerCase() === l.task.toLowerCase()
-      )).length;
-
-      indicator.textContent = newCount > 0 ? `+${newCount} live` : 'Up to date';
-      showToast(`✓ Loaded ${rows.length} DB submissions (${newCount} new)`);
-    } else {
-      indicator.textContent = 'No live data';
-      showToast('No new submissions found in DB');
-    }
-  } catch (e) {
-    indicator.textContent = '⚠ Offline';
-    showToast('Could not reach server — showing cached data');
-  } finally {
-    icon.classList.remove('spinning');
-    btn.disabled = false;
-    renderInternList();
-    if (selectedIntern) renderDetail(selectedIntern);
-    updateStats();
-  }
-}
-
 /* ── Helpers ── */
-function avatarContent(name) {
-  const url = photoMap[name];
-  if (url) return `<img src="${url}" alt="${name}" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;border-radius:50%;">`;
+function avatarContent(name){
+  const url=photoMap[name];
+  if(url) return `<img src="${url}" alt="${name}" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;border-radius:50%;">`;
   return name.split(' ').map(w=>w[0]).join('').slice(0,2);
 }
-
-function escHtml(str) {
-  if (!str) return '';
+function escHtml(str){
+  if(!str) return '';
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
@@ -412,37 +311,29 @@ function setFilter(f,el){
 }
 
 function getInternSubs(name){
-  let s=SUBS.filter(x=>x.intern===name||x.internName===name);
+  let s=SUBS.filter(x=>x.intern===name);
   if(currentFilter!=='all') s=s.filter(x=>x.status===currentFilter);
   return s;
 }
 
 function renderInternList(){
   const q=document.getElementById('searchInput').value.toLowerCase();
-  // Build a combined intern list: hardcoded INTERNS + any extra interns from live data
-  const allInternNames = [...new Set(SUBS.map(s=>s.intern))];
-  const internObjects = allInternNames.map(name => {
-    const found = INTERNS.find(i=>i.name===name||i.name.toLowerCase()===name.toLowerCase());
-    return found || {name, role:'Intern', color:'#d9a441', bg:'rgba(217,164,65'};
-  });
-
-  const filtered=internObjects.filter(i=>{
-    const s=SUBS.filter(x=>x.intern===i.name||x.internName===i.name);
+  const filtered=INTERNS.filter(i=>{
+    const s=SUBS.filter(x=>x.intern===i.name);
     return s.length&&(i.name.toLowerCase().includes(q)||s.some(x=>x.task.toLowerCase().includes(q)));
   });
-
   document.getElementById('internListCount').textContent=filtered.length+' interns';
   document.getElementById('internList').innerHTML=filtered.map(i=>{
     const subs=getInternSubs(i.name);
-    const liveCount=subs.filter(s=>s.source==='live').length;
-    const pending=subs.filter(s=>s.status==='pending'||s.status==='reviewing').length;
+    const allSubs=SUBS.filter(x=>x.intern===i.name);
+    const pending=allSubs.filter(s=>s.status==='pending'||s.status==='reviewing').length;
     const sel=selectedIntern===i.name;
     const avContent=avatarContent(i.name);
     return `<div class="intern-sub-item${sel?' active-sel':''}" onclick="selectIntern('${i.name.replace(/'/g,"\\'")}')">
       <div class="isi-av" style="background:linear-gradient(135deg,${i.bg},.35),${i.bg},.1));color:${i.color};">${avContent}</div>
       <div class="isi-info">
-        <div class="isi-name">${i.name}${liveCount>0?` <span style="font-size:9px;color:var(--teal);font-family:'Syne',sans-serif;font-weight:700;">+${liveCount} live</span>`:''}</div>
-        <div class="isi-role">${i.role} · ${subs.length} sub${subs.length!==1?'s':''}</div>
+        <div class="isi-name">${i.name}</div>
+        <div class="isi-role">${i.role} · ${allSubs.length} sub${allSubs.length!==1?'s':''}</div>
       </div>
       ${pending>0
         ?`<span class="isi-count" style="background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.2);color:var(--red);">${pending} ⏳</span>`
@@ -457,7 +348,7 @@ function selectIntern(name){ selectedIntern=name; renderInternList(); renderDeta
 
 function renderDetail(name){
   const i=INTERNS.find(x=>x.name===name)||{name,role:'Intern',color:'#d9a441',bg:'rgba(217,164,65'};
-  const subs=SUBS.filter(x=>x.intern===name||x.internName===name);
+  const subs=SUBS.filter(x=>x.intern===name);
   const panel=document.getElementById('detailPanel');
   if(!subs.length){
     panel.innerHTML=`<div class="empty-panel"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg><h3>No Submissions</h3><p>${name} has not submitted anything yet.</p></div>`;
@@ -470,13 +361,12 @@ function renderDetail(name){
     pending: {c:'var(--muted)',bg:'rgba(255,255,255,.05)', b:'rgba(255,255,255,.1)'}
   };
   const avContent=avatarContent(name);
-  const liveCount=subs.filter(s=>s.source==='live').length;
   panel.innerHTML=`
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.06);">
       <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,${i.bg},.35),${i.bg},.1));color:${i.color};border:2px solid ${i.color}44;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:17px;flex-shrink:0;overflow:hidden;">${avContent}</div>
       <div style="flex:1">
         <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text);margin-bottom:2px;">${name}</div>
-        <div style="font-size:12px;color:var(--muted);">${i.role} · ${subs.length} submission${subs.length!==1?'s':''}${liveCount>0?` · <span style="color:var(--teal);">${liveCount} from DB</span>`:''}</div>
+        <div style="font-size:12px;color:var(--muted);">${i.role} · ${subs.length} submission${subs.length!==1?'s':''}</div>
       </div>
       <div style="display:flex;gap:8px;">
         ${counts.map(({st,n})=>`<div style="text-align:center;background:${cfgs[st].bg};border:1px solid ${cfgs[st].b};border-radius:10px;padding:6px 12px;"><div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:${cfgs[st].c};line-height:1;">${n}</div><div style="font-size:9px;color:${cfgs[st].c};margin-top:2px;text-transform:uppercase;letter-spacing:.06em;">${st}</div></div>`).join('')}
@@ -491,15 +381,11 @@ function renderSubCard(s){
   const sl={pending:'Pending Review',reviewing:'Under Review',approved:'Approved',rejected:'Rejected'};
   const dl=new Date(s.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
   const stars=s.rating>0?'⭐'.repeat(s.rating)+'☆'.repeat(5-s.rating):'';
-  const isLive = s.source === 'live';
-  // Build the file link: for live entries use the backend URL, for hardcoded show placeholder
-  const fileUrl = isLive && s.filePath ? `${BACKEND_ORIGIN}/${s.filePath.replace(/^\.?[\/\\]/,'')}` : null;
-
   return `<div class="sub-card" id="scard-${s.id}">
     <div class="sub-card-header" id="shdr-${s.id}" onclick="toggleCard('${s.id}')">
       <div class="sub-file-icon" style="background:${fb};border:1px solid ${fbr};">${fi}</div>
       <div class="sub-info">
-        <div class="sub-title">${escHtml(s.task)} ${isLive?'<span class="badge-live">LIVE</span>':''}</div>
+        <div class="sub-title">${escHtml(s.task)}</div>
         <div class="sub-meta">
           <span>${escHtml(s.file)}</span>
           <span class="sub-badge" style="background:${fb};border:1px solid ${fbr};color:${fc};">${s.type.toUpperCase()} · ${s.size}</span>
@@ -517,10 +403,7 @@ function renderSubCard(s){
         <div class="file-preview-placeholder">
           <div style="width:52px;height:52px;background:${fb};border:1px solid ${fbr};border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto;">${fi.replace('width="18" height="18"','width="26" height="26"')}</div>
           <p><strong style="color:var(--text);font-size:14px;">${escHtml(s.file)}</strong><br>${s.type.toUpperCase()} Document · ${s.size}</p>
-          ${fileUrl
-            ? `<a href="${escHtml(fileUrl)}" target="_blank" rel="noopener" style="padding:9px 22px;border-radius:22px;background:var(--accent);border:none;color:#1a1d0f;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Open File</a>`
-            : `<button onclick="viewFile('${s.id}')" style="padding:9px 22px;border-radius:22px;background:var(--accent);border:none;color:#1a1d0f;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>View Document</button>`
-          }
+          <button onclick="viewFile('${s.id}')" style="padding:9px 22px;border-radius:22px;background:var(--accent);border:none;color:#1a1d0f;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>View Document</button>
         </div>
       </div>
       ${s.github?`<div class="github-row"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg><a class="github-link" href="${escHtml(s.github)}" target="_blank">${escHtml(s.github)}</a><button onclick="window.open('${escHtml(s.github)}','_blank')" style="padding:4px 12px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--muted);font-family:'Syne',sans-serif;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">&#8599; Open</button></div>`:''}
@@ -529,7 +412,7 @@ function renderSubCard(s){
         ${s.status!=='approved'?`<button class="btn-action btn-approve" onclick="setStatus('${s.id}','approved')"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Approve</button>`:''}
         ${s.status!=='rejected'?`<button class="btn-action btn-reject" onclick="setStatus('${s.id}','rejected')"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Reject</button>`:''}
         <button class="btn-action btn-feedback" onclick="openFeedback('${s.id}','${s.task.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>${s.feedback?'Edit':'Give'} Feedback</button>
-        ${fileUrl?`<a class="btn-action btn-download" href="${escHtml(fileUrl)}" download target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download</a>`:`<button class="btn-action btn-download" onclick="showToast('&#128229; Downloading...')"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download</button>`}
+        <button class="btn-action btn-download" onclick="showToast('📥 Downloading...')"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download</button>
       </div>
     </div>
   </div>`;
@@ -544,35 +427,23 @@ function toggleCard(id){
 }
 
 function viewFile(id){
-  const s=SUBS.find(x=>x.id===id||x.id===String(id)); if(!s) return;
+  const s=SUBS.find(x=>x.id===id); if(!s) return;
   const box=document.getElementById('fpbox-'+id),pdf=s.type==='pdf',fc=pdf?'var(--red)':'var(--teal)',fb=pdf?'rgba(255,107,107,.1)':'rgba(45,212,191,.1)',fbr=pdf?'rgba(255,107,107,.2)':'rgba(45,212,191,.2)';
   const rows=['Introduction','Methodology','Results','Conclusion','References'],widths=[[90,100,55],[75,88,78],[85,70,90],[60,95,45],[80,65,72]];
-  box.innerHTML=`<div style="width:100%;display:flex;flex-direction:column;"><div style="background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.06);padding:10px 16px;display:flex;align-items:center;gap:8px;"><div style="width:10px;height:10px;border-radius:50%;background:var(--red);"></div><div style="width:10px;height:10px;border-radius:50%;background:var(--accent);"></div><div style="width:10px;height:10px;border-radius:50%;background:var(--green);"></div><span style="font-size:11px;color:var(--muted);margin-left:8px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(s.file)}</span><span style="font-size:10px;color:${fc};background:${fb};border:1px solid ${fbr};padding:2px 8px;border-radius:20px;font-family:'Syne',sans-serif;font-weight:700;white-space:nowrap;">${s.type.toUpperCase()} · ${s.size}</span></div><div style="padding:20px 24px;"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--text);margin-bottom:3px;">${escHtml(s.task)}</div><div style="font-size:11px;color:var(--muted);margin-bottom:20px;">Submitted by ${escHtml(s.intern)} · ${new Date(s.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>${rows.map((sec,i)=>`<div style="margin-bottom:16px;"><div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${fc};margin-bottom:8px;">${sec}</div>${widths[i].map(w=>`<div style="height:8px;background:rgba(255,255,255,.06);border-radius:4px;width:${w}%;margin-bottom:6px;"></div>`).join('')}</div>`).join('')}<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;"><div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px 14px;"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">Word Count</div><div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);">${Math.floor(Math.random()*3000)+2000}</div></div><div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px 14px;"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">Pages</div><div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);">${Math.floor(Math.random()*10)+10}</div></div><div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px 14px;"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">Format</div><div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:${fc};">${s.type.toUpperCase()}</div></div></div></div><div style="padding:10px 16px;border-top:1px solid rgba(255,255,255,.05);display:flex;gap:8px;justify-content:flex-end;"><button onclick="showToast('&#128229; Downloading ${escHtml(s.file)}...')" style="padding:7px 16px;border-radius:18px;background:var(--accent);border:none;color:#1a1d0f;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;">&#8595; Download</button><button onclick="resetPreview('${id}')" style="padding:7px 16px;border-radius:18px;background:transparent;border:1px solid rgba(255,255,255,.12);color:var(--muted);font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;">&#10005; Close</button></div></div>`;
+  box.innerHTML=`<div style="width:100%;display:flex;flex-direction:column;"><div style="background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.06);padding:10px 16px;display:flex;align-items:center;gap:8px;"><div style="width:10px;height:10px;border-radius:50%;background:var(--red);"></div><div style="width:10px;height:10px;border-radius:50%;background:var(--accent);"></div><div style="width:10px;height:10px;border-radius:50%;background:var(--green);"></div><span style="font-size:11px;color:var(--muted);margin-left:8px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(s.file)}</span><span style="font-size:10px;color:${fc};background:${fb};border:1px solid ${fbr};padding:2px 8px;border-radius:20px;font-family:'Syne',sans-serif;font-weight:700;white-space:nowrap;">${s.type.toUpperCase()} · ${s.size}</span></div><div style="padding:20px 24px;"><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--text);margin-bottom:3px;">${escHtml(s.task)}</div><div style="font-size:11px;color:var(--muted);margin-bottom:20px;">Submitted by ${escHtml(s.intern)} · ${new Date(s.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>${rows.map((sec,i)=>`<div style="margin-bottom:16px;"><div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${fc};margin-bottom:8px;">${sec}</div>${widths[i].map(w=>`<div style="height:8px;background:rgba(255,255,255,.06);border-radius:4px;width:${w}%;margin-bottom:6px;"></div>`).join('')}</div>`).join('')}<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;"><div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px 14px;"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">Word Count</div><div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);">${Math.floor(Math.random()*3000)+2000}</div></div><div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px 14px;"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">Pages</div><div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);">${Math.floor(Math.random()*10)+10}</div></div><div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px 14px;"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">Format</div><div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:${fc};">${s.type.toUpperCase()}</div></div></div></div><div style="padding:10px 16px;border-top:1px solid rgba(255,255,255,.05);display:flex;gap:8px;justify-content:flex-end;"><button onclick="showToast('📥 Downloading ${escHtml(s.file)}...')" style="padding:7px 16px;border-radius:18px;background:var(--accent);border:none;color:#1a1d0f;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;">↓ Download</button><button onclick="resetPreview('${id}')" style="padding:7px 16px;border-radius:18px;background:transparent;border:1px solid rgba(255,255,255,.12);color:var(--muted);font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;">✕ Close</button></div></div>`;
   showToast('Document preview loaded');
 }
 
 function resetPreview(id){
-  const s=SUBS.find(x=>x.id===id||x.id===String(id)); if(!s) return;
+  const s=SUBS.find(x=>x.id===id); if(!s) return;
   const pdf=s.type==='pdf',fc=pdf?'var(--red)':'var(--teal)',fb=pdf?'rgba(255,107,107,.12)':'rgba(45,212,191,.1)',fbr=pdf?'rgba(255,107,107,.2)':'rgba(45,212,191,.2)';
   const fi=`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="${fc}" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>${pdf?'<line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>':''}</svg>`;
-  document.getElementById('fpbox-'+id).innerHTML=`<div class="file-preview-placeholder"><div style="width:52px;height:52px;background:${fb};border:1px solid ${fbr};border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto;">${fi}</div><p><strong style="color:var(--text);font-size:14px;">${escHtml(s.file)}</strong><br>${s.type.toUpperCase()} Document · ${s.size}</p><button onclick="viewFile('${id}')" style="padding:9px 22px;border-radius:22px;background:var(--accent);border:none;color:#1a1d0f;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">&#128065; View Document</button></div>`;
+  document.getElementById('fpbox-'+id).innerHTML=`<div class="file-preview-placeholder"><div style="width:52px;height:52px;background:${fb};border:1px solid ${fbr};border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto;">${fi}</div><p><strong style="color:var(--text);font-size:14px;">${escHtml(s.file)}</strong><br>${s.type.toUpperCase()} Document · ${s.size}</p><button onclick="viewFile('${id}')" style="padding:9px 22px;border-radius:22px;background:var(--accent);border:none;color:#1a1d0f;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">👁 View Document</button></div>`;
 }
 
-/* setStatus: updates in-memory; for live entries also calls API feedback/status endpoint */
 function setStatus(id, status){
-  const s=SUBS.find(x=>x.id===id||x.id===String(id)); if(!s) return;
+  const s=SUBS.find(x=>x.id===id); if(!s) return;
   s.status=status;
-
-  // For real DB entries, persist status via feedback endpoint
-  if (s.source === 'live' && s.dbId) {
-    const dbStatus = status === 'approved' ? 'on_time' : (status === 'rejected' ? 'late' : 'on_time');
-    fetch(`${API_BASE}/submissions/feedback/${s.dbId}`, {
-      method: 'PUT',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ feedback: s.feedback || '(Status updated by mentor)', status: dbStatus })
-    }).catch(()=>{}); // silent fail — at least UI updates
-  }
-
   renderDetail(selectedIntern);
   setTimeout(()=>{ toggleCard(id); updateStats(); },60);
   showToast(status==='approved'?'✓ Submission approved!':'✕ Submission rejected');
@@ -580,7 +451,7 @@ function setStatus(id, status){
 
 function openFeedback(id, taskName){
   currentFbId=id;
-  const s=SUBS.find(x=>x.id===id||x.id===String(id));
+  const s=SUBS.find(x=>x.id===id);
   document.getElementById('fbModalTitle').textContent='Feedback: '+taskName;
   document.getElementById('fbModalSub').textContent='Intern: '+(s?s.intern:'');
   document.getElementById('fbText').value=s?s.feedback:'';
@@ -591,29 +462,11 @@ function openFeedback(id, taskName){
 
 function closeFeedbackModal(){ document.getElementById('feedbackModal').classList.remove('open'); }
 
-async function submitFeedback(){
-  const s=SUBS.find(x=>x.id===currentFbId||x.id===String(currentFbId)); if(!s) return;
-  const text = document.getElementById('fbText').value.trim();
-  s.feedback = text;
-  s.rating = currentStarRating;
-
-  // For real DB entries, persist feedback via API
-  if (s.source === 'live' && s.dbId) {
-    try {
-      const dbStatus = s.status === 'approved' ? 'on_time' : (s.status === 'rejected' ? 'late' : 'on_time');
-      await fetch(`${API_BASE}/submissions/feedback/${s.dbId}`, {
-        method: 'PUT',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ feedback: text || '(No text)', status: dbStatus })
-      });
-      showToast('✓ Feedback saved to DB!');
-    } catch(e) {
-      showToast('✓ Feedback saved locally (server offline)');
-    }
-  } else {
-    showToast('✓ Feedback saved!');
-  }
-
+function submitFeedback(){
+  const s=SUBS.find(x=>x.id===currentFbId); if(!s) return;
+  s.feedback=document.getElementById('fbText').value.trim();
+  s.rating=currentStarRating;
+  showToast('✓ Feedback saved!');
   closeFeedbackModal();
   renderDetail(selectedIntern);
   setTimeout(()=>toggleCard(currentFbId),60);
@@ -624,17 +477,16 @@ function renderStars(n){ document.querySelectorAll('.star').forEach((s,i)=>{ s.t
 
 function updateStats(){
   const total=SUBS.length,pending=SUBS.filter(s=>s.status==='pending').length,reviewing=SUBS.filter(s=>s.status==='reviewing').length,approved=SUBS.filter(s=>s.status==='approved').length,rejected=SUBS.filter(s=>s.status==='rejected').length;
-  // update pending badge in nav
-  const pCount = pending + reviewing;
-  const navBadge = document.getElementById('pendingNavBadge');
-  if (navBadge) navBadge.textContent = pCount;
+  const pCount=pending+reviewing;
+  const navBadge=document.getElementById('pendingNavBadge');
+  if(navBadge) navBadge.textContent=pCount;
   function anim(id,v){ const el=document.getElementById(id); let c=parseInt(el.textContent)||0; if(c===v) return; const iv=setInterval(()=>{ c+=(v>c?1:-1); el.textContent=c; if(c===v) clearInterval(iv); },30); }
   anim('stTotal',total); anim('stPending',pending); anim('stReviewing',reviewing); anim('stApproved',approved); anim('stRejected',rejected);
 }
 
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
 
-/* ── MESH BG ── */
+/* ── MESH BACKGROUND ── */
 const cvs=document.getElementById('meshCanvas'),ctx=cvs.getContext('2d');
 let W,H; function rsz(){ W=cvs.width=innerWidth; H=cvs.height=innerHeight; } rsz(); addEventListener('resize',rsz);
 const pts=[{ax:.65,ay:.25,rx:.3,ry:.2,fx:.00028,fy:.00016,px:0,py:1,r:620,c:'rgba(180,120,20,'},{ax:.2,ay:.65,rx:.22,ry:.28,fx:.00018,fy:.00026,px:2.4,py:0,r:540,c:'rgba(155,100,15,'},{ax:.5,ay:.1,rx:.28,ry:.2,fx:.00022,fy:.00014,px:1,py:2,r:580,c:'rgba(50,65,20,'},{ax:.88,ay:.78,rx:.2,ry:.22,fx:.00013,fy:.00031,px:.5,py:.8,r:500,c:'rgba(44,58,18,'},{ax:.08,ay:.18,rx:.18,ry:.22,fx:.00025,fy:.0002,px:3,py:1.5,r:460,c:'rgba(20,24,12,'},{ax:.55,ay:.88,rx:.24,ry:.18,fx:.00017,fy:.00023,px:1.8,py:2.7,r:490,c:'rgba(28,32,16,'}];
@@ -657,12 +509,11 @@ document.querySelectorAll('.nav-item').forEach(item=>{
 
 for(let i=0;i<10;i++){ const p=document.createElement('div'); p.className='particle'; const sz=2+Math.random()*4; Object.assign(p.style,{width:sz+'px',height:sz+'px',left:Math.random()*100+'vw',top:(60+Math.random()*40)+'vh',animationDuration:(9+Math.random()*14)+'s',animationDelay:Math.random()*10+'s'}); document.body.appendChild(p); }
 
-/* ── BOOT: render hardcoded first, then fetch live ── */
+/* ── BOOT ── */
 renderInternList();
 setTimeout(updateStats, 200);
 setTimeout(()=>selectIntern('Monisha K'), 400);
-// Auto-fetch live submissions on load
-setTimeout(fetchLiveSubmissions, 800);
+/* fetchLiveSubmissions disabled — running in local mode */
 </script>
 </body>
 </html>

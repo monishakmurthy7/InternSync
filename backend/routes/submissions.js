@@ -107,7 +107,9 @@ router.put('/feedback/:id', (req, res) => {
   const { feedback, status } = req.body;
   const valid = ['on_time', 'late'];
   const safeStatus = valid.includes(status) ? status : 'on_time';
-  if (!feedback?.trim()) return res.status(400).json({ error: 'Feedback text is required.' });
+  const safeFeedback = feedback?.trim() || '';
+db.query('UPDATE submissions SET feedback = ?, status = ? WHERE id = ?',
+  [safeFeedback, safeStatus, parseInt(req.params.id)], ...);
 
   db.query('UPDATE submissions SET feedback = ?, status = ? WHERE id = ?', [feedback.trim(), safeStatus, parseInt(req.params.id)], (err) => {
     if (err) return res.status(500).json({ error: err.message });
