@@ -8,10 +8,9 @@ const db      = require('../db');
 // ── Multer config ────────────────────────────────────────
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // ✅ RESOLVE ABSOLUTE PATH: Goes up from 'routes/' to project root/server, then into 'uploads/submissions'
     const dir = path.resolve(__dirname, '../uploads/submissions');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    console.log(`💾 Multer saving to: ${dir}`); // DEBUG: Check this matches server.js output
+    console.log(`💾 Multer saving to: ${dir}`);
     cb(null, dir);
   },
   filename: (req, file, cb) => {
@@ -45,7 +44,6 @@ router.post('/submit', handleUpload, (req, res) => {
   const { intern_id, task_name, github_url } = req.body;
   if (!intern_id || !task_name) return res.status(400).json({ error: 'Intern ID and Task Name are required.' });
 
-  // ✅ Store RELATIVE path for frontend URL
   const file_path = req.file ? path.join('uploads', 'submissions', path.basename(req.file.filename)).replace(/\\/g, '/') : null;
   const file_name = req.file ? req.file.originalname : 'no-file-uploaded';
   const safeGithub = github_url?.trim() || '';
@@ -108,13 +106,15 @@ router.put('/feedback/:id', (req, res) => {
   const valid = ['on_time', 'late'];
   const safeStatus = valid.includes(status) ? status : 'on_time';
   const safeFeedback = feedback?.trim() || '';
-db.query('UPDATE submissions SET feedback = ?, status = ? WHERE id = ?',
-  [safeFeedback, safeStatus, parseInt(req.params.id)], ...);
 
-  db.query('UPDATE submissions SET feedback = ?, status = ? WHERE id = ?', [feedback.trim(), safeStatus, parseInt(req.params.id)], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Feedback saved!' });
-  });
+  db.query(
+    'UPDATE submissions SET feedback = ?, status = ? WHERE id = ?',
+    [safeFeedback, safeStatus, parseInt(req.params.id)],
+    (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: 'Feedback saved!' });
+    }
+  );
 });
 
 module.exports = router;
