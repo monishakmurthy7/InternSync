@@ -333,7 +333,7 @@ const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hos
   ? 'http://localhost:3000'
   : 'https://internsync-3v10.onrender.com';
 
-const MENTOR_ID = 4;
+const MENTOR_ID = 9;
 // ═══════════════════════════════════════════════════════════
 const photoMap = {
   'Monisha K':     './images/monisha.jpeg',
@@ -416,6 +416,66 @@ async function apiFetch(path, opts = {}) {
   if (!res.ok || !data.success) throw new Error(data.message || 'API error');
   return data;
 }
+function loadHardcodedFeedback() {
+  fbHistory = [
+    {
+      id: 1, intern: 'Monisha K', rating: 4,
+      message: 'Great progress this week! Your full stack implementation was clean and well-structured. Keep up the consistent effort.',
+      tags: ['Great Work', 'On Track', 'Strong Code'],
+      improvements: ['Improve error handling in API calls', 'Add more comments to complex logic'],
+      metrics: { efficiency: 78, punctuality: 85, codeQuality: 80, communication: 72 },
+      color: '#d9a441', bg: 'rgba(217,164,65', role: 'Full Stack Intern',
+      date: 'May 20, 2026', created_at: '2026-05-20'
+    },
+    {
+      id: 2, intern: 'Fiona Shalet', rating: 5,
+      message: 'Exceptional frontend work! Your UI components are pixel-perfect and the animations are smooth. Top performer this week.',
+      tags: ['Top Performer', 'Excellent UI', 'Great Work'],
+      improvements: ['Consider accessibility improvements', 'Write unit tests for components'],
+      metrics: { efficiency: 92, punctuality: 95, codeQuality: 88, communication: 90 },
+      color: '#2dd4bf', bg: 'rgba(45,212,191', role: 'Frontend Intern',
+      date: 'May 19, 2026', created_at: '2026-05-19'
+    },
+    {
+      id: 3, intern: 'Bhavana R', rating: 5,
+      message: 'Outstanding performance across all metrics. Your backend logic is efficient and well-tested. Excellent communication with the team.',
+      tags: ['Top Performer', 'Strong Code', 'Communication'],
+      improvements: ['Document your APIs using Swagger', 'Explore caching strategies'],
+      metrics: { efficiency: 90, punctuality: 88, codeQuality: 92, communication: 87 },
+      color: '#4ade80', bg: 'rgba(74,222,128', role: 'Full Stack Intern',
+      date: 'May 18, 2026', created_at: '2026-05-18'
+    },
+    {
+      id: 4, intern: 'Stella Mary', rating: 3,
+      message: 'Decent work but falling slightly behind on deadlines. Focus on time management and completing assigned tasks before moving to new ones.',
+      tags: ['Needs Improvement', 'Falling Behind'],
+      improvements: ['Follow the task schedule strictly', 'Communicate blockers earlier', 'Review backend concepts'],
+      metrics: { efficiency: 55, punctuality: 48, codeQuality: 62, communication: 58 },
+      color: '#ff6b6b', bg: 'rgba(255,107,107', role: 'Backend Intern',
+      date: 'May 17, 2026', created_at: '2026-05-17'
+    },
+    {
+      id: 5, intern: 'Arun Prasad', rating: 4,
+      message: 'Solid backend contributions. Your SQL queries are optimized and the REST APIs are well-designed. Good team player.',
+      tags: ['Strong SQL', 'On Track', 'Strong Code'],
+      improvements: ['Add input validation to all endpoints', 'Write integration tests'],
+      metrics: { efficiency: 74, punctuality: 80, codeQuality: 78, communication: 70 },
+      color: '#fbbf24', bg: 'rgba(251,191,36', role: 'Backend Intern',
+      date: 'May 16, 2026', created_at: '2026-05-16'
+    },
+  ];
+
+  fbCountByIntern = {};
+  lastRatingByIntern = {};
+  fbHistory.forEach(f => {
+    fbCountByIntern[f.intern] = (fbCountByIntern[f.intern] || 0) + 1;
+    if (!lastRatingByIntern[f.intern]) lastRatingByIntern[f.intern] = f.rating;
+  });
+
+  renderHistory();
+  loadStats();
+  renderInternList();
+}
 
 // ═══════════════════════════════════════════════════════════
 // LOAD FEEDBACK FROM DB
@@ -447,12 +507,17 @@ async function loadFeedback() {
       if (!lastRatingByIntern[n]) lastRatingByIntern[n] = f.rating; // already sorted DESC
     });
 
-    renderHistory();
-    await loadStats();
-    renderInternList();
-  } catch (err) {
+    if (!fbHistory.length) {
+      loadHardcodedFeedback();
+    } else {
+      renderHistory();
+      await loadStats();
+      renderInternList();
+    }
+ } catch (err) {
     console.error('loadFeedback:', err);
     showToast('⚠ Could not load feedback from server', true);
+    loadHardcodedFeedback();
   }
 }
 

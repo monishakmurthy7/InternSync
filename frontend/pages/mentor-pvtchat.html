@@ -126,7 +126,6 @@ nav{ position:relative; z-index:20; background:rgba(10,13,6,.9); backdrop-filter
 .msg-row{ display:flex; gap:10px; align-items:flex-end; }
 .msg-row.me{ flex-direction:row-reverse; }
 
-/* small avatar in messages */
 .msg-av-sm{
   width:30px; height:30px; border-radius:50%;
   display:flex; align-items:center; justify-content:center;
@@ -275,8 +274,6 @@ nav{ position:relative; z-index:20; background:rgba(10,13,6,.9); backdrop-filter
           <div class="chat-header-name" id="hdrName"></div>
           <div class="chat-header-status"><span id="hdrStatusDot"></span><span id="hdrStatusText"></span></div>
         </div>
-        
-      
         <div class="private-badge">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
           Private
@@ -319,42 +316,47 @@ nav{ position:relative; z-index:20; background:rgba(10,13,6,.9); backdrop-filter
 <!-- TOAST -->
 <div id="toast" style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(14,18,8,.97);border:1px solid rgba(217,164,65,.4);color:#fff;padding:11px 22px;border-radius:30px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;z-index:9999;white-space:nowrap;"></div>
 
-
 <script>
-const photoMap = {
-  'Monisha K':      './images/monisha.jpeg',
-  'Fiona Shalet':   './images/fiona.jpeg',
-  'Stella Mary':    './images/stella.jpeg',
-  'Bhavana R':      './images/bhavana.jpeg',
-  'Deekshitha S':   './images/deekshitha.jpeg',
-  'Arun Prasad':    './images/arun.jpeg',
-  'Shonn Dias':     './images/shonn.jpeg',
-  'Bhoomika Ravi':  './images/bhoomika.jpeg',
-  'Hrithika Gowda': './images/hrithika.jpeg',
-  'Vinay Kumar':    './images/Vinay.jpeg'
-};
-
-const MENTOR_PHOTO = './images/raj sharma.jpeg';
-
-
-
- // replace with actual mentor photo path
-
-// Mentor ID is always 1. Each contact maps to their DB user ID.
-const MENTOR_ID = 4;
-const CONTACT_IDS = {
-  'monisha':  3,
-  'fiona':    7,
-  'stella':   15,
-  'bhavana':  9,
-  'shonn':    12,
-  'bhoomika': 13
-};
-
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════
 const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
   ? 'http://localhost:3000/api'
   : 'https://internsync-3v10.onrender.com/api';
 
+const MENTOR_ID   = 4;
+const MENTOR_PHOTO = './images/raj sharma.jpeg';
+
+const CONTACT_IDS = {
+  monisha:  3,
+  fiona:    7,
+  stella:   15,
+  bhavana:  9,
+  shonn:    12,
+  bhoomika: 13,
+};
+
+// ═══════════════════════════════════════════════════════════
+// PHOTO MAP
+// ═══════════════════════════════════════════════════════════
+const photoMap = {
+  'Monisha K':      './images/monisha.jpeg',
+  'Fiona Shalet':   './images/fiona.jpeg',
+  'Vinay Kumar':    './images/Vinay.jpeg',
+  'Bhavana R':      './images/bhavana.jpeg',
+  'Shonn Dias':     './images/shonn.jpeg',
+  'Bhoomika Ravi':  './images/bhoomika.jpeg',
+};
+
+function avHTML(name, fallbackInitials) {
+  const url = photoMap[name];
+  if (url) return `<img src="${url}" alt="${name}" style="width:100%;height:100%;object-fit:cover;object-position:center top;border-radius:50%;display:block;">`;
+  return fallbackInitials;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CONTACTS
+// ═══════════════════════════════════════════════════════════
 const CONTACTS = [
   {
     id:'monisha', name:'Monisha K', role:'Full Stack', initials:'MK',
@@ -394,18 +396,89 @@ const CONTACTS = [
   },
 ];
 
+// ═══════════════════════════════════════════════════════════
+// HARDCODED MESSAGES — fallback when DB returns nothing
+// ═══════════════════════════════════════════════════════════
+const HARDCODED_MESSAGES = {
+  monisha: [
+    { from:'intern', text:'Good morning! I just pushed the dashboard component to GitHub.', time:'9:02 AM' },
+    { from:'me',     text:'Morning Monisha! I saw it — looks clean. Nice work on the sidebar layout.', time:'9:10 AM' },
+    { from:'intern', text:'Thank you! I also fixed the mobile responsiveness issue you mentioned.', time:'9:12 AM' },
+    { from:'me',     text:'Perfect. Can you also add loading skeletons for the stats cards?', time:'9:15 AM' },
+    { from:'intern', text:'On it! Should be done by EOD. Also, quick question — should I use Context API or Redux for state?', time:'9:18 AM' },
+    { from:'me',     text:'Context API is fine for this scale. Redux would be overkill here.', time:'9:20 AM' },
+    { from:'intern', text:'Got it. Thanks for the guidance! 🙏', time:'9:21 AM' },
+    { from:'me',     text:"Always. Keep up the great work, you're making solid progress.", time:'9:22 AM' },
+    { from:'intern', text:'Submitted the dashboard component!', time:'10:45 AM' },
+  ],
+  fiona: [
+    { from:'intern', text:'Hi! I have a quick question about CSS animations.', time:'10:05 AM' },
+    { from:'me',     text:'Sure, go ahead Fiona!', time:'10:08 AM' },
+    { from:'intern', text:"I'm trying to do a smooth slide-in for the cards but it's janky on Safari.", time:'10:09 AM' },
+    { from:'me',     text:'Try using `transform: translateX()` instead of `left` — it\'s GPU-accelerated.', time:'10:12 AM' },
+    { from:'intern', text:'Oh that\'s a great tip! Also add `will-change: transform`?', time:'10:13 AM' },
+    { from:'me',     text:'Yes, but use it sparingly — only on elements you know will animate.', time:'10:14 AM' },
+    { from:'intern', text:'Works perfectly now! Thank you so much 🎉', time:'10:20 AM' },
+    { from:'me',     text:'Great! Your CSS work on the landing page was excellent by the way.', time:'10:22 AM' },
+    { from:'intern', text:'Quick question about CSS animations', time:'11:30 AM' },
+  ],
+  stella: [
+    { from:'intern', text:'Hi, the API documentation is ready for your review.', time:'8:30 AM' },
+    { from:'me',     text:"Great, I'll take a look this afternoon.", time:'9:00 AM' },
+    { from:'intern', text:"I've documented all the endpoints with request/response examples.", time:'9:02 AM' },
+    { from:'me',     text:'Did you include error codes as well?', time:'9:05 AM' },
+    { from:'intern', text:'Yes! All 4xx and 5xx codes are documented with descriptions.', time:'9:07 AM' },
+    { from:'me',     text:'Excellent. Share the Swagger link when ready.', time:'9:10 AM' },
+    { from:'intern', text:'Here it is: localhost:3000/api-docs — let me know your feedback!', time:'9:15 AM' },
+    { from:'me',     text:'Will review by EOD. Nice initiative documenting the error codes proactively.', time:'9:18 AM' },
+    { from:'intern', text:'API docs are ready for review', time:'10:00 AM' },
+  ],
+  bhavana: [
+    { from:'intern', text:'I reviewed your feedback from yesterday — really helpful, thank you!', time:'9:30 AM' },
+    { from:'me',     text:"Glad it helped! How's the full stack integration going?", time:'9:35 AM' },
+    { from:'intern', text:'Really well! The React frontend is now talking to the Node backend seamlessly.', time:'9:37 AM' },
+    { from:'me',     text:'Nice. Are you using JWT for auth on the protected routes?', time:'9:40 AM' },
+    { from:'intern', text:'Yes! Implemented JWT with refresh tokens too. Followed your suggestion.', time:'9:42 AM' },
+    { from:'me',     text:"That's impressive for week 3. You're ahead of schedule!", time:'9:45 AM' },
+    { from:'intern', text:"Really appreciate the encouragement! I'll keep pushing 💪", time:'9:47 AM' },
+    { from:'me',     text:'Keep it up. Tag me in the PR when the auth module is ready.', time:'9:50 AM' },
+    { from:'intern', text:'Thanks for the feedback!', time:'2:00 PM' },
+  ],
+  shonn: [
+    { from:'intern', text:"Hey, I'm having trouble setting up Docker for the project.", time:'7:45 AM' },
+    { from:'me',     text:'What error are you getting?', time:'8:00 AM' },
+    { from:'intern', text:'Port 5432 is already in use when I run docker-compose up.', time:'8:02 AM' },
+    { from:'me',     text:'You likely have a local PostgreSQL instance running. Stop it first with `sudo service postgresql stop`.', time:'8:05 AM' },
+    { from:'intern', text:'That worked! Now getting a different error — network bridge issue.', time:'8:10 AM' },
+    { from:'me',     text:'Run `docker network prune` and try again.', time:'8:12 AM' },
+    { from:'intern', text:'Yes! Containers are up now. Thanks a ton! 🐳', time:'8:20 AM' },
+    { from:'me',     text:'Nice. Document what you did so others on the team can reference it.', time:'8:22 AM' },
+    { from:'intern', text:'Need help with Docker setup', time:'8:15 AM' },
+  ],
+  bhoomika: [
+    { from:'intern', text:'Good morning! Working on the Webpack config today.', time:'8:00 AM' },
+    { from:'me',     text:'Morning! What are you optimizing?', time:'8:10 AM' },
+    { from:'intern', text:'Setting up code splitting and lazy loading for the routes.', time:'8:12 AM' },
+    { from:'me',     text:'Good call. Use `React.lazy()` with `Suspense` for that.', time:'8:15 AM' },
+    { from:'intern', text:'Already on it! Also configuring tree-shaking for production builds.', time:'8:17 AM' },
+    { from:'me',     text:'Perfect. Make sure `sideEffects: false` is in your package.json.', time:'8:20 AM' },
+    { from:'intern', text:'Added it! Bundle size dropped by 40% 🚀', time:'9:00 AM' },
+    { from:'me',     text:"Wow, that's a great result. Document what you did for the team.", time:'9:05 AM' },
+    { from:'intern', text:'Working on the Webpack config', time:'4:00 PM' },
+  ],
+};
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
 let activeContactId  = null;
 let activeInternDBId = null;
 let pollingInterval  = null;
 let lastMessageId    = 0;
 
-function avHTML(name, fallbackInitials) {
-  const url = photoMap[name];
-  if (url) return `<img src="${url}" alt="${name}" style="width:100%;height:100%;object-fit:cover;object-position:center top;border-radius:50%;display:block;">`;
-  return fallbackInitials;
-}
-
-/* ── RENDER CONTACTS ── */
+// ═══════════════════════════════════════════════════════════
+// RENDER CONTACTS
+// ═══════════════════════════════════════════════════════════
 function renderContacts(list) {
   const el = document.getElementById('contactsList');
   el.innerHTML = '';
@@ -442,7 +515,9 @@ function filterContacts(q) {
   renderContacts(filtered);
 }
 
-/* ── OPEN CHAT ── */
+// ═══════════════════════════════════════════════════════════
+// OPEN CHAT
+// ═══════════════════════════════════════════════════════════
 async function openChat(id) {
   activeContactId  = id;
   activeInternDBId = CONTACT_IDS[id];
@@ -476,20 +551,20 @@ async function openChat(id) {
   // Show chat UI
   document.getElementById('emptyChat').style.display = 'none';
   const ac = document.getElementById('activeChat');
-  ac.style.display = 'flex';
+  ac.style.display      = 'flex';
   ac.style.flexDirection = 'column';
-  ac.style.flex = '1';
-  ac.style.overflow = 'hidden';
+  ac.style.flex          = '1';
+  ac.style.overflow      = 'hidden';
 
-  // Load messages from DB
   await loadMessages(c);
 
-  // Start polling for new messages every 3 seconds
   clearInterval(pollingInterval);
   pollingInterval = setInterval(() => pollNewMessages(c), 3000);
 }
 
-/* ── LOAD ALL MESSAGES FROM DB ── */
+// ═══════════════════════════════════════════════════════════
+// LOAD MESSAGES — DB first, hardcoded fallback if empty
+// ═══════════════════════════════════════════════════════════
 async function loadMessages(c) {
   const msgEl = document.getElementById('messages');
   msgEl.innerHTML = '';
@@ -499,37 +574,48 @@ async function loadMessages(c) {
   divider.innerHTML = '<span>Today</span>';
   msgEl.appendChild(divider);
 
+  let loadedFromDB = false;
+
   try {
-    const res = await fetch(`${API_BASE}/internchat/${MENTOR_ID}/${activeInternDBId}`);
+    const res    = await fetch(`${API_BASE}/internchat/${MENTOR_ID}/${activeInternDBId}`);
     const result = await res.json();
-    const data = result.data || result;
+    const data   = result.data || result;
 
     if (Array.isArray(data) && data.length > 0) {
       data.forEach(msg => {
         renderMsg({
-          from   : msg.sender_id === MENTOR_ID ? 'me' : 'intern',
-          text   : msg.message,
-          time   : formatTime(msg.sent_at),
-          read   : true,
-          dbId   : msg.id
+          from : msg.sender_id === MENTOR_ID ? 'me' : 'intern',
+          text : msg.message,
+          time : formatTime(msg.sent_at),
+          read : true,
+          dbId : msg.id,
         }, c, false);
         if (msg.id > lastMessageId) lastMessageId = msg.id;
       });
+      loadedFromDB = true;
     }
-  } catch(err) {
-    console.warn('Could not load messages:', err.message);
+  } catch (err) {
+    console.warn('Could not load messages from DB:', err.message);
+  }
+
+  // ── FALLBACK: show hardcoded messages if DB returned nothing ──
+  if (!loadedFromDB) {
+    const hardcoded = HARDCODED_MESSAGES[c.id] || [];
+    hardcoded.forEach(msg => renderMsg(msg, c, false));
   }
 
   msgEl.scrollTop = msgEl.scrollHeight;
 }
 
-/* ── POLL FOR NEW MESSAGES ── */
+// ═══════════════════════════════════════════════════════════
+// POLL FOR NEW MESSAGES
+// ═══════════════════════════════════════════════════════════
 async function pollNewMessages(c) {
   if (!activeInternDBId) return;
   try {
-    const res  = await fetch(`${API_BASE}/internchat/${MENTOR_ID}/${activeInternDBId}`);
+    const res    = await fetch(`${API_BASE}/internchat/${MENTOR_ID}/${activeInternDBId}`);
     const result = await res.json();
-    const data = result.data || result;
+    const data   = result.data || result;
 
     if (!Array.isArray(data)) return;
 
@@ -540,7 +626,7 @@ async function pollNewMessages(c) {
         text : msg.message,
         time : formatTime(msg.sent_at),
         read : true,
-        dbId : msg.id
+        dbId : msg.id,
       }, c, true);
       if (msg.id > lastMessageId) lastMessageId = msg.id;
     });
@@ -548,28 +634,28 @@ async function pollNewMessages(c) {
     if (newMsgs.length > 0) {
       const msgEl = document.getElementById('messages');
       msgEl.scrollTop = msgEl.scrollHeight;
-
-      // Update contact preview
       c.preview = newMsgs.at(-1).message.slice(0, 40) + '…';
-      c.time = 'now';
+      c.time    = 'now';
       renderContacts(CONTACTS);
     }
-  } catch(err) {
-    // silent fail — polling is best-effort
+  } catch (err) {
+    // silent — polling is best-effort
   }
 }
 
-/* ── RENDER MSG ── */
+// ═══════════════════════════════════════════════════════════
+// RENDER MSG
+// ═══════════════════════════════════════════════════════════
 function renderMsg(msg, contact, animate) {
-  const isMe = msg.from === 'me';
-  const c    = contact || CONTACTS.find(x => x.id === activeContactId);
+  const isMe  = msg.from === 'me';
+  const c     = contact || CONTACTS.find(x => x.id === activeContactId);
   const msgEl = document.getElementById('messages');
 
   const row = document.createElement('div');
   row.className = `msg-row${isMe ? ' me' : ''}`;
   if (animate) {
-    row.style.opacity   = '0';
-    row.style.transform = 'translateY(8px)';
+    row.style.opacity    = '0';
+    row.style.transform  = 'translateY(8px)';
     row.style.transition = 'opacity .28s,transform .28s';
   }
 
@@ -607,7 +693,9 @@ function renderMsg(msg, contact, animate) {
   }
 }
 
-/* ── SEND MESSAGE ── */
+// ═══════════════════════════════════════════════════════════
+// SEND MESSAGE
+// ═══════════════════════════════════════════════════════════
 async function sendMessage() {
   if (!activeContactId || !activeInternDBId) return;
   const input = document.getElementById('chatInput');
@@ -618,9 +706,9 @@ async function sendMessage() {
   const time = now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
   const c    = CONTACTS.find(x => x.id === activeContactId);
 
-  // Optimistically render
+  // Optimistic render
   renderMsg({ from:'me', text, time, read:false }, c, true);
-  input.value = '';
+  input.value        = '';
   input.style.height = 'auto';
 
   const msgEl = document.getElementById('messages');
@@ -634,8 +722,8 @@ async function sendMessage() {
       body    : JSON.stringify({
         sender_id  : MENTOR_ID,
         receiver_id: activeInternDBId,
-        message    : text
-      })
+        message    : text,
+      }),
     });
     const result = await res.json();
     if (result.message_id && result.message_id > lastMessageId) {
@@ -644,21 +732,25 @@ async function sendMessage() {
     c.preview = text.slice(0, 40) + (text.length > 40 ? '…' : '');
     c.time    = 'now';
     renderContacts(CONTACTS);
-  } catch(err) {
+  } catch (err) {
     console.warn('Could not save message to DB:', err.message);
   }
 }
 
-/* ── INPUT EVENTS ── */
+// ═══════════════════════════════════════════════════════════
+// INPUT EVENTS
+// ═══════════════════════════════════════════════════════════
 document.getElementById('chatInput').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
-document.getElementById('chatInput').addEventListener('input', function() {
+document.getElementById('chatInput').addEventListener('input', function () {
   this.style.height = 'auto';
   this.style.height = Math.min(this.scrollHeight, 100) + 'px';
 });
 
-/* ── UTILITIES ── */
+// ═══════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════
 function formatTime(dateStr) {
   return new Date(dateStr).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
 }
@@ -666,50 +758,52 @@ function formatTime(dateStr) {
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.style.opacity = '1';
+  t.style.opacity   = '1';
   t.style.transform = 'translateX(-50%) translateY(0)';
   setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(20px)'; }, 2500);
 }
 
-/* ── MESH BG ── */
+// ═══════════════════════════════════════════════════════════
+// MESH BACKGROUND
+// ═══════════════════════════════════════════════════════════
 const cvs = document.getElementById('meshCanvas'), ctx = cvs.getContext('2d');
 let W, H;
 function rsz() { W = cvs.width = innerWidth; H = cvs.height = innerHeight; }
 rsz(); addEventListener('resize', rsz);
 const pts = [
-  {ax:.65,ay:.25,rx:.3,ry:.2,fx:.00028,fy:.00016,px:0,py:1,r:620,c:'rgba(180,120,20,'},
-  {ax:.2,ay:.65,rx:.22,ry:.28,fx:.00018,fy:.00026,px:2.4,py:0,r:540,c:'rgba(155,100,15,'},
-  {ax:.5,ay:.1,rx:.28,ry:.2,fx:.00022,fy:.00014,px:1,py:2,r:580,c:'rgba(50,65,20,'},
-  {ax:.88,ay:.78,rx:.2,ry:.22,fx:.00013,fy:.00031,px:.5,py:.8,r:500,c:'rgba(44,58,18,'},
-  {ax:.08,ay:.18,rx:.18,ry:.22,fx:.00025,fy:.0002,px:3,py:1.5,r:460,c:'rgba(20,24,12,'},
+  { ax:.65, ay:.25, rx:.3,  ry:.2,  fx:.00028, fy:.00016, px:0,   py:1,   r:620, c:'rgba(180,120,20,' },
+  { ax:.2,  ay:.65, rx:.22, ry:.28, fx:.00018, fy:.00026, px:2.4, py:0,   r:540, c:'rgba(155,100,15,' },
+  { ax:.5,  ay:.1,  rx:.28, ry:.2,  fx:.00022, fy:.00014, px:1,   py:2,   r:580, c:'rgba(50,65,20,'   },
+  { ax:.88, ay:.78, rx:.2,  ry:.22, fx:.00013, fy:.00031, px:.5,  py:.8,  r:500, c:'rgba(44,58,18,'   },
+  { ax:.08, ay:.18, rx:.18, ry:.22, fx:.00025, fy:.0002,  px:3,   py:1.5, r:460, c:'rgba(20,24,12,'   },
 ];
 function mesh(t) {
-  ctx.fillStyle = '#0f1209'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#0f1209'; ctx.fillRect(0, 0, W, H);
   pts.forEach(p => {
-    const x = W*(p.ax+p.rx*Math.sin(p.fx*t+p.px));
-    const y = H*(p.ay+p.ry*Math.cos(p.fy*t+p.py));
-    const g = ctx.createRadialGradient(x,y,0,x,y,p.r);
-    g.addColorStop(0,p.c+'0.28)'); g.addColorStop(.5,p.c+'0.07)'); g.addColorStop(1,p.c+'0)');
-    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    const x = W * (p.ax + p.rx * Math.sin(p.fx * t + p.px));
+    const y = H * (p.ay + p.ry * Math.cos(p.fy * t + p.py));
+    const g = ctx.createRadialGradient(x, y, 0, x, y, p.r);
+    g.addColorStop(0, p.c + '0.28)'); g.addColorStop(.5, p.c + '0.07)'); g.addColorStop(1, p.c + '0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   });
-  const v = ctx.createRadialGradient(W/2,H/2,H*.1,W/2,H/2,H*.9);
-  v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.55)');
-  ctx.fillStyle = v; ctx.fillRect(0,0,W,H);
+  const v = ctx.createRadialGradient(W/2, H/2, H*.1, W/2, H/2, H*.9);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
 }
 let t0 = null;
-(function loop(ts) { if(!t0) t0 = ts; mesh(ts-t0); requestAnimationFrame(loop); })(0);
+(function loop(ts) { if (!t0) t0 = ts; mesh(ts - t0); requestAnimationFrame(loop); })(0);
 
 const gl = document.getElementById('glow');
-addEventListener('mousemove', e => { gl.style.left = e.clientX+'px'; gl.style.top = e.clientY+'px'; });
+addEventListener('mousemove', e => { gl.style.left = e.clientX + 'px'; gl.style.top = e.clientY + 'px'; });
 
 document.querySelectorAll('.nav-item').forEach(item => {
   item.addEventListener('mousemove', e => {
     const r = item.getBoundingClientRect();
-    if (!item.classList.contains('active')) item.style.transform = `translateY(${(e.clientY-r.top-r.height/2)*.1}px)`;
+    if (!item.classList.contains('active')) item.style.transform = `translateY(${(e.clientY - r.top - r.height / 2) * .1}px)`;
   });
   item.addEventListener('mouseleave', () => {
     item.style.transition = 'transform .4s cubic-bezier(.34,1.56,.64,1)';
-    item.style.transform = 'translateY(0)';
+    item.style.transform  = 'translateY(0)';
     setTimeout(() => item.style.transition = '', 400);
   });
 });
