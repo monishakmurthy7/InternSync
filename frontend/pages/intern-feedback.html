@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InternSync — Performance</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#d9a441;
+  --accent2:#f0c060;
+  --bg:#1a1d0f;
+  --card-bg:rgba(255,255,255,0.055);
+  --card-border:rgba(255,255,255,0.13);
+  --text:#f0ede4;
+  --muted:rgba(240,237,228,0.45);
+  --teal:#2dd4bf;
+  --red:#ff6b6b;
+  --sidebar-w:230px;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; display:flex; flex-direction:column; }
+#meshCanvas{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+.glow{ position:fixed; width:380px; height:380px; background:radial-gradient(circle,rgba(217,164,65,.18),transparent 70%); border-radius:50%; pointer-events:none; filter:blur(60px); transform:translate(-50%,-50%); z-index:1; }
+
+/* LAYOUT */
+.layout{ display:flex; flex:1; position:relative; z-index:5; }
+
+/* SIDEBAR */
+.sidebar{ width:var(--sidebar-w); flex-shrink:0; background:rgba(10,13,6,.6); backdrop-filter:blur(20px); border-right:1px solid rgba(255,255,255,.07); padding:24px 0; display:flex; flex-direction:column; position:sticky; top:0; height:calc(100vh - 65px); overflow-y:auto; }
+.sidebar::-webkit-scrollbar{ width:3px; }
+.sidebar::-webkit-scrollbar-thumb{ background:rgba(217,164,65,.15); border-radius:4px; }
+.sidebar-section{ font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:rgba(240,237,228,.2); padding:0 20px; margin:18px 0 8px; }
+.sidebar-section:first-child{ margin-top:0; }
+.nav-item{ display:flex; align-items:center; gap:11px; padding:10px 20px; cursor:pointer; position:relative; color:var(--muted); font-size:13px; font-weight:500; transition:color .2s,background .2s; text-decoration:none; }
+.nav-item svg{ width:16px; height:16px; stroke:currentColor; flex-shrink:0; }
+.nav-item:hover{ color:var(--text); background:rgba(255,255,255,.04); }
+.nav-item.active{ color:var(--accent); background:rgba(217,164,65,.08); border-right:2px solid var(--accent); }
+.nav-item.active svg{ stroke:var(--accent); }
+
+/* MAIN */
+main{ flex:1; padding:32px 36px; overflow-y:auto; }
+.section-title{ font-family:'Syne',sans-serif; font-size:13px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:24px; display:flex; align-items:center; gap:10px; }
+.section-title::after{ content:''; flex:1; height:1px; background:rgba(217,164,65,.18); }
+
+/* PROFILE HERO */
+.profile-hero{
+  background:var(--card-bg); border:1px solid var(--card-border);
+  border-radius:18px; padding:28px 32px; backdrop-filter:blur(20px);
+  box-shadow:0 8px 32px rgba(0,0,0,.35);
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:20px; position:relative; overflow:hidden;
+  opacity:0; transform:translateY(24px);
+}
+.profile-hero::before{ content:''; position:absolute; inset:0; border-radius:18px; background:linear-gradient(135deg,rgba(217,164,65,.06),transparent 55%); pointer-events:none; }
+.profile-hero::after{ content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--accent),var(--accent2),transparent); border-radius:18px 18px 0 0; }
+.profile-hero.visible{ animation:cardIn .55s cubic-bezier(.22,1,.36,1) forwards; }
+
+.profile-name{ font-family:'Syne',sans-serif; font-size:28px; font-weight:800; margin-bottom:4px; }
+.profile-role{ font-size:13px; color:var(--muted); margin-bottom:10px; }
+.id-badge{ display:inline-flex; align-items:center; gap:6px; background:rgba(45,212,191,.1); border:1px solid rgba(45,212,191,.25); border-radius:8px; padding:3px 12px; font-family:'Syne',sans-serif; font-size:11px; font-weight:700; color:var(--teal); letter-spacing:.08em; }
+
+.mentor-rating{ text-align:right; }
+.rating-label{ font-size:11px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-bottom:4px; }
+.rating-val{ font-family:'Syne',sans-serif; font-size:42px; font-weight:800; color:var(--accent); line-height:1; }
+.rating-sub{ font-size:12px; color:var(--muted); margin-top:2px; }
+
+/* CARDS */
+.card{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:18px; padding:24px; backdrop-filter:blur(20px); box-shadow:0 8px 32px rgba(0,0,0,.35); position:relative; overflow:visible; transition:transform .25s ease,box-shadow .25s ease; transform-style:preserve-3d; opacity:0; transform:translateY(24px); }
+.card.visible{ animation:cardIn .55s cubic-bezier(.22,1,.36,1) forwards; }
+.card::before{ content:''; position:absolute; inset:0; border-radius:18px; background:linear-gradient(135deg,rgba(217,164,65,.04),transparent 60%); pointer-events:none; }
+@keyframes cardIn{ from{opacity:0;transform:translateY(28px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.card-title{ font-family:'Syne',sans-serif; font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:18px; }
+
+/* GRID */
+.grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
+.grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:18px; }
+
+/* METRIC BARS */
+.metric-row{ margin-bottom:16px; }
+.metric-row:last-child{ margin-bottom:0; }
+.metric-info{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px; }
+.metric-name{ font-size:13px; font-weight:500; color:var(--text); }
+.metric-pct{ font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:var(--accent); }
+.bar-bg{ height:6px; background:rgba(255,255,255,.07); border-radius:10px; overflow:hidden; }
+.bar-fill{ height:100%; border-radius:10px; background:linear-gradient(90deg,var(--accent),var(--accent2)); width:0; transition:width 1.2s cubic-bezier(.4,0,.2,1); position:relative; overflow:hidden; }
+.bar-fill::after{ content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,.3) 50%,transparent); animation:shineBar 2.2s infinite linear; }
+@keyframes shineBar{ from{transform:translateX(-100%)} to{transform:translateX(200%)} }
+
+/* OVERALL SCORE */
+.score-wrap{ display:flex; align-items:center; gap:28px; }
+.score-ring-wrap{ position:relative; flex-shrink:0; }
+.score-ring{ transform:rotate(-90deg); }
+.score-ring-bg{ fill:none; stroke:rgba(255,255,255,.07); }
+.score-ring-fill{ fill:none; stroke:url(#scoreGrad); stroke-linecap:round; transition:stroke-dashoffset 1.8s cubic-bezier(.4,0,.2,1); }
+.score-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.score-num{ font-family:'Syne',sans-serif; font-size:32px; font-weight:800; color:var(--accent); line-height:1; }
+.score-label{ font-size:10px; color:var(--muted); margin-top:2px; }
+.score-details{ flex:1; }
+.score-detail-row{ display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+.score-detail-row:last-child{ border-bottom:none; }
+.score-detail-label{ font-size:12px; color:var(--muted); }
+.score-detail-val{ font-family:'Syne',sans-serif; font-size:13px; font-weight:700; }
+
+/* FEEDBACK */
+.fb-item{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-left:3px solid var(--accent); border-radius:0 10px 10px 0; padding:14px 16px; margin-bottom:12px; position:relative; }
+.fb-item:last-child{ margin-bottom:0; }
+.fb-text{ font-size:13px; line-height:1.65; color:var(--text); }
+.fb-author{ font-family:'Syne',sans-serif; font-size:10px; font-weight:700; letter-spacing:.1em; color:var(--accent); margin-top:8px; text-transform:uppercase; }
+
+/* IMPROVEMENTS */
+.imp-item{ display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:13px; color:var(--muted); line-height:1.5; }
+.imp-item:last-child{ border-bottom:none; padding-bottom:0; }
+.imp-arrow{ color:var(--accent); font-family:'Syne',sans-serif; font-weight:700; flex-shrink:0; margin-top:1px; }
+
+/* STAT MINI CARDS */
+.stat-mini{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px 16px; }
+.stat-mini-val{ font-family:'Syne',sans-serif; font-size:36px; font-weight:800; color:var(--accent); line-height:1; }
+.stat-mini-label{ font-size:11px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.08em; }
+.stat-mini-sub{ font-size:11px; color:var(--teal); margin-top:3px; font-weight:600; }
+
+/* PARTICLES */
+.particle{ position:fixed; border-radius:50%; background:rgba(217,164,65,.14); pointer-events:none; z-index:2; animation:floatUp linear infinite; }
+@keyframes floatUp{ 0%{transform:translateY(0) scale(1);opacity:.4} 50%{transform:translateY(-70px) scale(1.1);opacity:.15} 100%{transform:translateY(-140px) scale(.8);opacity:0} }
+</style>
+</head>
+<body>
+
+<canvas id="meshCanvas"></canvas>
+<div class="glow" id="glow"></div>
+<!-- Shared Nav -->
+<script>
+  IS_NAV_CONFIG = {
+    name:       "Monisha K",
+    photo:      "",
+    profileURL: "intern-profile.html",
+    logoutURL:  "auth.html",
+    showBack:   false,   /* change to true if page needs a Back button */
+    backURL:    "main.html"
+  };
+</script>
+<script src="intern-nav.js"></script>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">Menu</div>
+    <a class="nav-item" href="intern-dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" href="intern-content.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+      Content for You
+    </a>
+    <a class="nav-item" href="intern-taskassigned.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Task Assigned
+    </a>
+    <a class="nav-item" href="intern-submission.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Submission
+    </a>
+    <a class="nav-item active" href="intern-feedback.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Feedback
+    </a>
+    <div class="sidebar-section">Communication</div>
+    <a class="nav-item" href="intern-leave.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Leave Request
+    </a>
+    <a class="nav-item" href="intern-discussion.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      Discussion Room
+    </a>
+    <a class="nav-item" href="intern-pvtchat.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="9" y1="10" x2="15" y2="10"/></svg>
+      Chat with Mentor
+    </a>
+    <div class="sidebar-section">Profile</div>
+    <a class="nav-item" href="intern-certificate.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+      View Certificate
+    </a>
+  </aside>
+
+  <main>
+    <div class="section-title">Performance Dashboard</div>
+
+    <!-- PROFILE HERO -->
+    <div class="profile-hero" id="hero">
+      <div>
+        <div class="profile-name">Monisha K</div>
+        <div class="profile-role">Full Stack Intern &nbsp;</div>
+        <div class="id-badge">ID: 2 </div>
+      </div>
+      <div class="mentor-rating">
+        <div class="rating-label">Mentor Rating</div>
+        <div class="rating-val">4.9</div>
+        <div class="rating-sub">out of 5.0</div>
+      </div>
+    </div>
+
+    <!-- TOP ROW: 3 mini stat cards -->
+    <div class="grid-3">
+      <div class="card stat-mini" id="c1">
+        <div class="stat-mini-val">92<span style="font-size:18px;color:rgba(217,164,65,.5)">%</span></div>
+        <div class="stat-mini-label">Efficiency</div>
+        <div class="stat-mini-sub">Above average</div>
+      </div>
+      <div class="card stat-mini" id="c2">
+        <div class="stat-mini-val">98<span style="font-size:18px;color:rgba(217,164,65,.5)">%</span></div>
+        <div class="stat-mini-label">Punctuality</div>
+        <div class="stat-mini-sub" style="color:var(--accent)">Excellent</div>
+      </div>
+      <div class="card stat-mini" id="c3">
+        <div class="stat-mini-val">88<span style="font-size:18px;color:rgba(217,164,65,.5)">%</span></div>
+        <div class="stat-mini-label">Code Quality</div>
+        <div class="stat-mini-sub">Good</div>
+      </div>
+    </div>
+
+    <!-- MID ROW: Metric bars + Overall score -->
+    <div class="grid-2">
+
+      <!-- METRIC BREAKDOWN -->
+      <div class="card" id="c4">
+        <div class="card-title">Metric Breakdown</div>
+        <div class="metric-row">
+          <div class="metric-info"><span class="metric-name">Efficiency</span><span class="metric-pct" id="p1">0%</span></div>
+          <div class="bar-bg"><div class="bar-fill" data-pct="92" id="b1"></div></div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-info"><span class="metric-name">Punctuality</span><span class="metric-pct" id="p2">0%</span></div>
+          <div class="bar-bg"><div class="bar-fill" data-pct="98" id="b2"></div></div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-info"><span class="metric-name">Code Quality</span><span class="metric-pct" id="p3">0%</span></div>
+          <div class="bar-bg"><div class="bar-fill" data-pct="88" id="b3"></div></div>
+        </div>
+        <div class="metric-row">
+          <div class="metric-info"><span class="metric-name">Communication</span><span class="metric-pct" id="p4">0%</span></div>
+          <div class="bar-bg"><div class="bar-fill" data-pct="85" id="b4"></div></div>
+        </div>
+      </div>
+
+      <!-- OVERALL SCORE -->
+      <div class="card" id="c5">
+        <div class="card-title">Total Performance Aggregate</div>
+        <div class="score-wrap">
+          <div class="score-ring-wrap">
+            <svg width="130" height="130" class="score-ring">
+              <defs>
+                <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#d9a441"/>
+                  <stop offset="100%" stop-color="#f0c060"/>
+                </linearGradient>
+              </defs>
+              <circle class="score-ring-bg" cx="65" cy="65" r="54" stroke-width="10"/>
+              <circle class="score-ring-fill" id="scoreRing" cx="65" cy="65" r="54"
+                      stroke-width="10" stroke-dasharray="339.3" stroke-dashoffset="339.3"/>
+            </svg>
+            <div class="score-center">
+              <div class="score-num" id="scoreNum">0</div>
+              <div class="score-label">/ 100</div>
+            </div>
+          </div>
+          <div class="score-details">
+            <div class="score-detail-row">
+              <span class="score-detail-label">Performance</span>
+              <span class="score-detail-val" style="color:var(--accent)">91%</span>
+            </div>
+            <div class="score-detail-row">
+              <span class="score-detail-label">Mentor Rating</span>
+              <span class="score-detail-val" style="color:var(--accent2)">4.9 / 5.0</span>
+            </div>
+            <div class="score-detail-row">
+              <span class="score-detail-label">Tasks Done</span>
+              <span class="score-detail-val" style="color:var(--teal)">3 / 5</span>
+            </div>
+            <div class="score-detail-row">
+              <span class="score-detail-label">Status</span>
+              <span class="score-detail-val" style="color:var(--teal)">On Track</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM ROW: Feedback + Improvements -->
+    <div class="grid-2">
+
+      <div class="card" id="c6">
+        <div class="card-title">Recent Feedback</div>
+        <div class="fb-item">
+          <div class="fb-text">"Your recent frontend optimizations significantly improved the site speed. Great attention to detail — this is the standard we expect."</div>
+          <div class="fb-author">— Mentor</div>
+        </div>
+        <div class="fb-item">
+          <div class="fb-text">"Communication during standups has been sharp and concise. Keep maintaining that clarity across written updates too."</div>
+          <div class="fb-author">— Mentor</div>
+        </div>
+      </div>
+
+      <div class="card" id="c7">
+        <div class="card-title">Areas of Improvement</div>
+        <div class="imp-item">
+          <span class="imp-arrow">→</span>
+          <span>Continue mastering advanced State Management patterns in React.</span>
+        </div>
+        <div class="imp-item">
+          <span class="imp-arrow">→</span>
+          <span>Maintain consistent unit testing coverage for all API endpoints.</span>
+        </div>
+        <div class="imp-item">
+          <span class="imp-arrow">→</span>
+          <span>Document code more thoroughly — especially in complex utility functions.</span>
+        </div>
+        <div class="imp-item">
+          <span class="imp-arrow">→</span>
+          <span>Engage more actively in peer code reviews to build collaborative habits.</span>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+/* MESH */
+const cvs=document.getElementById('meshCanvas'),ctx=cvs.getContext('2d');
+let W,H;
+function rsz(){ W=cvs.width=innerWidth; H=cvs.height=innerHeight; }
+rsz(); addEventListener('resize',rsz);
+const pts=[
+  {ax:.65,ay:.25,rx:.3,ry:.2,fx:.00028,fy:.00016,px:0,py:1,r:620,c:'rgba(180,120,20,'},
+  {ax:.2,ay:.65,rx:.22,ry:.28,fx:.00018,fy:.00026,px:2.4,py:0,r:540,c:'rgba(155,100,15,'},
+  {ax:.5,ay:.1,rx:.28,ry:.2,fx:.00022,fy:.00014,px:1,py:2,r:580,c:'rgba(50,65,20,'},
+  {ax:.88,ay:.78,rx:.2,ry:.22,fx:.00013,fy:.00031,px:.5,py:.8,r:500,c:'rgba(44,58,18,'},
+  {ax:.08,ay:.18,rx:.18,ry:.22,fx:.00025,fy:.0002,px:3,py:1.5,r:460,c:'rgba(20,24,12,'},
+  {ax:.55,ay:.88,rx:.24,ry:.18,fx:.00017,fy:.00023,px:1.8,py:2.7,r:490,c:'rgba(28,32,16,'},
+];
+function mesh(t){
+  ctx.fillStyle='#1a1d0f'; ctx.fillRect(0,0,W,H);
+  pts.forEach(p=>{
+    const x=W*(p.ax+p.rx*Math.sin(p.fx*t+p.px));
+    const y=H*(p.ay+p.ry*Math.cos(p.fy*t+p.py));
+    const g=ctx.createRadialGradient(x,y,0,x,y,p.r);
+    g.addColorStop(0,p.c+'0.36)'); g.addColorStop(.5,p.c+'0.11)'); g.addColorStop(1,p.c+'0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  });
+  const v=ctx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,H*.88);
+  v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.5)');
+  ctx.fillStyle=v; ctx.fillRect(0,0,W,H);
+}
+let t0=null;
+(function loop(ts){ if(!t0)t0=ts; mesh(ts-t0); requestAnimationFrame(loop); })(0);
+
+/* GLOW */
+const gl=document.getElementById('glow');
+addEventListener('mousemove',e=>{ gl.style.left=e.clientX+'px'; gl.style.top=e.clientY+'px'; });
+
+/* REVEAL */
+const allCards=[...document.querySelectorAll('.card,.profile-hero')];
+allCards.forEach((c,i)=>setTimeout(()=>c.classList.add('visible'),100+i*100));
+
+/* 3D TILT */
+document.querySelectorAll('.card').forEach(card=>{
+  card.addEventListener('mousemove',e=>{
+    const r=card.getBoundingClientRect();
+    const dx=(e.clientX-r.left-r.width/2)/(r.width/2);
+    const dy=(e.clientY-r.top-r.height/2)/(r.height/2);
+    card.style.transform=`perspective(800px) rotateY(${dx*6}deg) rotateX(${-dy*6}deg) translateY(-5px) scale(1.015)`;
+    card.style.boxShadow=`${-dx*10}px ${-dy*10}px 36px rgba(217,164,65,.16),0 16px 48px rgba(0,0,0,.4)`;
+  });
+  card.addEventListener('mouseleave',()=>{
+    card.style.transition='transform .5s cubic-bezier(.34,1.56,.64,1),box-shadow .4s ease';
+    card.style.transform='perspective(800px) rotateY(0) rotateX(0) translateY(0) scale(1)';
+    card.style.boxShadow='0 8px 32px rgba(0,0,0,.35)';
+    setTimeout(()=>card.style.transition='',500);
+  });
+  card.addEventListener('mouseenter',()=>card.style.transition='transform .12s ease,box-shadow .12s ease');
+});
+
+/* MAGNETIC BUTTONS */
+document.querySelectorAll('button').forEach(b=>{
+  b.addEventListener('mousemove',e=>{
+    const r=b.getBoundingClientRect();
+    b.style.transform=`translate(${(e.clientX-r.left-r.width/2)*.2}px,${(e.clientY-r.top-r.height/2)*.2}px) scale(1.05)`;
+  });
+  b.addEventListener('mouseleave',()=>{
+    b.style.transition='transform .4s cubic-bezier(.34,1.56,.64,1)';
+    b.style.transform='translate(0,0) scale(1)';
+    setTimeout(()=>b.style.transition='',400);
+  });
+});
+
+/* MAGNETIC SIDEBAR */
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('mousemove',e=>{
+    const r=item.getBoundingClientRect();
+    if(!item.classList.contains('active'))
+      item.style.transform=`translateY(${(e.clientY-r.top-r.height/2)*.12}px)`;
+  });
+  item.addEventListener('mouseleave',()=>{
+    item.style.transition='transform .4s cubic-bezier(.34,1.56,.64,1)';
+    item.style.transform='translateY(0)';
+    setTimeout(()=>item.style.transition='',400);
+  });
+});
+
+/* METRIC BARS — animate on load */
+setTimeout(()=>{
+  [1,2,3,4].forEach(i=>{
+    const fill=document.getElementById('b'+i);
+    const label=document.getElementById('p'+i);
+    const pct=parseInt(fill.dataset.pct);
+    fill.style.width=pct+'%';
+    let v=0;
+    const iv=setInterval(()=>{ v=Math.min(v+2,pct); label.textContent=v+'%'; if(v>=pct) clearInterval(iv); },16);
+  });
+},500);
+
+/* OVERALL SCORE RING */
+const scoreRing=document.getElementById('scoreRing');
+const scoreNum=document.getElementById('scoreNum');
+const TARGET=91, CIRC=339.3;
+setTimeout(()=>{
+  scoreRing.style.strokeDashoffset=CIRC-(TARGET/100)*CIRC;
+  let v=0;
+  const iv=setInterval(()=>{ v=Math.min(v+1,TARGET); scoreNum.textContent=v; if(v>=TARGET) clearInterval(iv); },20);
+},600);
+
+/* PARTICLES */
+for(let i=0;i<10;i++){
+  const p=document.createElement('div'); p.className='particle';
+  const sz=2+Math.random()*4;
+  Object.assign(p.style,{ width:sz+'px',height:sz+'px',left:Math.random()*100+'vw',top:(60+Math.random()*40)+'vh',animationDuration:(9+Math.random()*14)+'s',animationDelay:Math.random()*10+'s' });
+  document.body.appendChild(p);
+}
+</script>
+</body>
+</html>
