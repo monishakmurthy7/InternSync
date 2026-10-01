@@ -116,6 +116,7 @@ main{ flex:1; padding:32px 36px; overflow-y:auto; }
 .toast{ position:fixed; bottom:28px; right:28px; background:rgba(30,34,16,.95); border:1px solid rgba(217,164,65,.35); border-radius:12px; padding:14px 20px; font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:var(--accent); z-index:200; display:flex; align-items:center; gap:10px; transform:translateY(20px); opacity:0; transition:transform .35s cubic-bezier(.22,1,.36,1),opacity .35s; pointer-events:none; }
 .toast.show{ transform:translateY(0); opacity:1; }
 </style>
+<link rel="stylesheet" href="mobile.css">
 </head>
 <body>
   <script src="mentor-nav.js"></script>
@@ -529,5 +530,5 @@ for (let i=0;i<10;i++){const p=document.createElement('div');p.className='partic
 loadProfile();
 </script>
 
-</body>
-</html>
+<script src="mobile.js" defer></script>
+</body></html>

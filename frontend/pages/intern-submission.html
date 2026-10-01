@@ -120,6 +120,7 @@ tbody tr:hover{background:rgba(255,255,255,.03);}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
+<link rel="stylesheet" href="mobile.css">
 </head>
 <body>
  
@@ -276,5 +277,5 @@ document.querySelectorAll('.nav-item').forEach(item=>{item.addEventListener('mou
 for(let i=0;i<10;i++){const p=document.createElement('div');p.className='particle';const sz=2+Math.random()*4;Object.assign(p.style,{width:sz+'px',height:sz+'px',left:Math.random()*100+'vw',top:(60+Math.random()*40)+'vh',animationDuration:(9+Math.random()*14)+'s',animationDelay:Math.random()*10+'s'});document.body.appendChild(p);}
 </script>
 <script src="intern-nav.js"></script>
-</body>
-</html>
+<script src="mobile.js" defer></script>
+</body></html>

@@ -114,6 +114,7 @@ main{ flex:1; padding:28px 32px; overflow-y:auto; }
 .local-badge{ display:inline-flex; align-items:center; gap:5px; font-family:'Syne',sans-serif; font-size:9px; font-weight:700; padding:3px 9px; border-radius:20px; letter-spacing:.06em; background:rgba(217,164,65,.1); border:1px solid rgba(217,164,65,.25); color:var(--accent); }
 .local-badge::before{ content:''; width:5px; height:5px; border-radius:50%; background:var(--accent); }
 </style>
+<link rel="stylesheet" href="mobile.css">
 </head>
 <body>
 <canvas id="meshCanvas"></canvas>
@@ -515,5 +516,5 @@ setTimeout(updateStats, 200);
 setTimeout(()=>selectIntern('Monisha K'), 400);
 /* fetchLiveSubmissions disabled — running in local mode */
 </script>
-</body>
-</html>
+<script src="mobile.js" defer></script>
+</body></html>
