@@ -6,6 +6,23 @@
 @media (max-width: 768px) {
   html, body { max-width: 100%; overflow-x: hidden; }
 
+  /* ── Shared top bar (built by intern-nav.js) ── */
+  .is-nav { padding: 10px 12px !important; gap: 8px; }
+  .is-nav-left, .is-nav-right { gap: 8px !important; min-width: 0; }
+  .is-logo { width: 34px !important; height: 34px !important; }
+  .is-logo .il { font-size: 30px !important; }
+  .is-nav-name { display: none !important; }
+  .is-back-btn { padding: 6px 12px !important; font-size: 11px !important; }
+  .is-avatar, .is-bell-btn { width: 32px !important; height: 32px !important; }
+  .is-btn-logout { padding: 6px 12px !important; font-size: 11px !important; letter-spacing: .3px !important; }
+  .is-btn-logout:hover { letter-spacing: .3px !important; }
+
+  /* notification dropdown: full width under the bar instead of 310px sticking out */
+  .is-notif-dropdown {
+    position: fixed !important; top: 60px !important;
+    left: 12px !important; right: 12px !important; width: auto !important;
+  }
+
   /* ── Sidebar becomes a slide-in drawer ── */
   .layout { z-index: auto !important; }
   .sidebar {
@@ -48,19 +65,19 @@
   .summary-row { gap: 8px !important; }
   .sum-card { padding: 12px 6px !important; }
 
-  /* Headings */
-  .greeting, .page-title, .profile-name { font-size: 22px; }
-  .sub, .page-sub { font-size: 13px; }
+  /* Headings (!important so they win even if mobile.css is linked above a page's <style>) */
+  .greeting, .page-title, .profile-name { font-size: 22px !important; }
+  .sub, .page-sub { font-size: 13px !important; }
 
   /* Stacked heroes / headers */
   .hero-inner, .profile-hero-inner, .profile-hero, .task-top {
-    flex-direction: column; align-items: flex-start; gap: 16px;
+    flex-direction: column !important; align-items: flex-start !important; gap: 16px;
   }
   .mentor-rating { text-align: left; }
   .badge-row { justify-content: flex-start; }
   .task-title { font-size: 16px; }
   .task-dates { flex-wrap: wrap; gap: 16px 28px; }
-  .score-wrap, .attendance-horiz { flex-direction: column; align-items: flex-start; }
+  .score-wrap, .attendance-horiz { flex-direction: column !important; align-items: flex-start !important; }
   .avatar-lg { width: 84px; height: 84px; }
   .info-row > div:last-child { min-width: 0; }
   .info-val { word-break: break-word; }
