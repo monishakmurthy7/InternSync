@@ -1,2 +1,8 @@
-   [build]
-     publish = "frontend"
+[build]
+  publish = "frontend"
+
+[[redirects]]
+  from = "/"
+  to = "/pages/main.html"
+  status = 302
+  force = true
