@@ -33,6 +33,46 @@
     window.addEventListener('resize', function () { if (window.innerWidth > 768) toggle(false); });
   }
 
+  // Laptop / desktop: ☰ button that collapses and expands the sidebar.
+  // Hidden on phones by mobile.css (phones use the drawer above).
+  if (sb && !document.getElementById('sbToggle')) {
+    var KEY = 'is-sidebar-collapsed';
+    var store = {
+      get: function () { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } },
+      set: function (v) { try { localStorage.setItem(KEY, v ? '1' : '0'); } catch (e) {} }
+    };
+
+    var btn = document.createElement('button');
+    btn.className = 'sb-toggle';
+    btn.id = 'sbToggle';
+    btn.type = 'button';
+    btn.textContent = '\u2630';
+
+    var apply = function (collapsed) {
+      document.body.classList.toggle('sb-collapsed', collapsed);
+      var label = collapsed ? 'Show menu' : 'Hide menu';
+      btn.setAttribute('aria-label', label);
+      btn.title = label;
+      btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    };
+
+    // Put the button at the start of the shared top bar; otherwise float it.
+    var left = document.querySelector('.is-nav-left');
+    if (left) {
+      left.insertBefore(btn, left.firstChild);
+    } else {
+      btn.classList.add('floating');
+      document.body.appendChild(btn);
+    }
+
+    apply(store.get());
+    btn.addEventListener('click', function () {
+      var next = !document.body.classList.contains('sb-collapsed');
+      apply(next);
+      store.set(next);
+    });
+  }
+
   // Certificate: shrink the fixed 860px page to fit the screen
   var page = document.querySelector('.page');
   if (page && document.querySelector('.inner-border')) {

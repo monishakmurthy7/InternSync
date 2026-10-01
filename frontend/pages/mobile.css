@@ -115,3 +115,37 @@
   /* Certificate page */
   body:has(.inner-border) { padding-top: 84px !important; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   Laptop / desktop: ☰ button that collapses the sidebar
+   (created by mobile.js; phones keep using the drawer above)
+   ════════════════════════════════════════════════════════════ */
+.sb-toggle { display: none; }
+
+@media (min-width: 769px) {
+  .sb-toggle {
+    display: flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; flex-shrink: 0; padding: 0;
+    border-radius: 50%; cursor: pointer; font-size: 16px; line-height: 1;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    color: var(--accent, #d9a441);
+    transition: background .2s, border-color .2s, box-shadow .2s;
+  }
+  .sb-toggle:hover {
+    background: rgba(217,164,65,.12);
+    border-color: rgba(217,164,65,.4);
+    box-shadow: 0 0 12px rgba(217,164,65,.25);
+  }
+  /* fallback when the page has no shared top bar */
+  .sb-toggle.floating { position: fixed; top: 14px; left: 12px; z-index: 30; }
+
+  .sidebar { transition: width .25s ease, padding .25s ease; }
+
+  body.sb-collapsed .sidebar {
+    width: 0 !important; min-width: 0 !important;
+    padding-left: 0 !important; padding-right: 0 !important;
+    border-right-width: 0 !important;
+    overflow: hidden !important;
+  }
+}
