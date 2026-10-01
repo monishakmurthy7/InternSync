@@ -1,0 +1,100 @@
+/* mobile.css — shared mobile layout for InternSync pages.
+   Everything is inside media queries, so desktop looks exactly as before. */
+
+.menu-fab, .sidebar-overlay { display: none; }
+
+@media (max-width: 768px) {
+  html, body { max-width: 100%; overflow-x: hidden; }
+
+  /* ── Sidebar becomes a slide-in drawer ── */
+  .layout { z-index: auto !important; }
+  .sidebar {
+    position: fixed !important; top: 0; left: 0; bottom: 0;
+    height: 100vh !important; height: 100dvh !important;
+    width: 260px; max-width: 82vw; z-index: 10000;
+    background: rgba(10,13,6,.98) !important;
+    transform: translateX(-105%); transition: transform .3s ease;
+    padding-top: 70px !important;
+  }
+  .sidebar.open { transform: translateX(0); box-shadow: 8px 0 40px rgba(0,0,0,.6); }
+  .sidebar-overlay.show {
+    display: block; position: fixed; inset: 0;
+    background: rgba(0,0,0,.55); z-index: 9999;
+  }
+  .menu-fab {
+    display: flex; align-items: center; justify-content: center;
+    position: fixed; left: 16px; bottom: 20px;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: var(--accent, #d9a441); color: #1a1d0f;
+    border: none; font-size: 22px; cursor: pointer;
+    z-index: 10001; box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  }
+  /* chat pages: keep the button away from the message box */
+  .has-chat .menu-fab {
+    bottom: auto; left: auto; top: 74px; right: 12px;
+    width: 42px; height: 42px; font-size: 18px;
+  }
+
+  /* ── Main content ── */
+  main { min-width: 0; padding: 20px 16px 96px !important; }
+  .has-chat main { padding: 14px 12px 0 !important; }
+  .card, .task-card { padding: 18px !important; }
+  .page-hero, .profile-hero-card, .profile-hero { padding: 20px !important; }
+
+  /* Multi-column grids become one column */
+  .grid, .grid-2, .grid-3, .content-grid, .leave-grid, .fb-scroll { grid-template-columns: 1fr !important; }
+  .col-span-2, .col-span-3, .card-full, .full-width { grid-column: auto !important; }
+  main div[style*="grid-template-columns"] { grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
+  .summary-row { gap: 8px !important; }
+  .sum-card { padding: 12px 6px !important; }
+
+  /* Headings */
+  .greeting, .page-title, .profile-name { font-size: 22px; }
+  .sub, .page-sub { font-size: 13px; }
+
+  /* Stacked heroes / headers */
+  .hero-inner, .profile-hero-inner, .profile-hero, .task-top {
+    flex-direction: column; align-items: flex-start; gap: 16px;
+  }
+  .mentor-rating { text-align: left; }
+  .badge-row { justify-content: flex-start; }
+  .task-title { font-size: 16px; }
+  .task-dates { flex-wrap: wrap; gap: 16px 28px; }
+  .score-wrap, .attendance-horiz { flex-direction: column; align-items: flex-start; }
+  .avatar-lg { width: 84px; height: 84px; }
+  .info-row > div:last-child { min-width: 0; }
+  .info-val { word-break: break-word; }
+
+  /* Dashboard bits */
+  .stat-pill { min-width: 120px; }
+  .pill-tooltip { white-space: normal; min-width: 0; width: 100%; }
+
+  /* Content page */
+  .playlist-wrap iframe { height: 220px !important; }
+  .playlist-meta { flex-wrap: wrap; gap: 10px; }
+  .video-list { max-height: 320px; }
+  .doc-item { flex-wrap: wrap; }
+  .doc-name { white-space: normal; }
+  .video-frame-wrap { padding: 12px; }
+
+  /* Tables scroll sideways inside their card */
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+  .modal-card { padding: 22px; }
+
+  /* Chat pages (discussion + mentor chat) */
+  .has-chat { height: 100vh !important; height: 100dvh !important; }
+  .has-chat .layout { height: auto !important; min-height: 0; }
+  .msg-content { max-width: 82% !important; }
+  .messages { padding: 14px 12px !important; }
+  .input-area { padding: 10px 12px 14px !important; }
+  .sender-label, .private-badge { display: none !important; }
+  .chat-header { padding: 12px 14px !important; }
+  .members-bar { flex-wrap: nowrap !important; overflow-x: auto; padding-bottom: 4px; }
+  .member-chip { flex-shrink: 0; }
+
+  /* Toasts */
+  .toast { white-space: normal !important; max-width: 90vw; text-align: center; }
+
+  /* Certificate page */
+  body:has(.inner-border) { padding-top: 84px !important; }
+}

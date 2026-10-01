@@ -377,8 +377,8 @@ main{ flex:1; padding:32px 36px; overflow-y:auto; }
 // ── CONFIG ───────────────────────────────────────────────────
 const API_BASE = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
   ? 'http://localhost:3000'
-  : 'https://internsync-3v10.onrender.com';
- const INTERN_ID = Number(localStorage.getItem('internId')) || 3;
+  : 'https://internsync-production-7079.up.railway.app';
+ const INTERN_ID = 3; // hardcoded: Monisha K
 
 // ── MESH BACKGROUND ──────────────────────────────────────────
 const cvs = document.getElementById('meshCanvas'), ctx = cvs.getContext('2d');
